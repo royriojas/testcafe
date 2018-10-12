@@ -1,7 +1,7 @@
 import hammerhead from 'testcafe-hammerhead';
 import asyncToGenerator from 'babel-runtime/helpers/asyncToGenerator';
 import { noop } from 'lodash';
-import loadBabelLibs from './load-babel-libs';
+// import loadBabelLibs from './load-babel-libs';
 import { ClientFunctionAPIError } from '../errors/runtime';
 import MESSAGE from '../errors/runtime/message';
 
@@ -33,24 +33,42 @@ const babelArtifactPolyfills = {
 };
 
 
-function getBabelOptions () {
-    const { presetFallback, transformForOfAsArray } = loadBabelLibs();
+// function getBabelOptions () {
+//     const { presetFallback, transformForOfAsArray } = loadBabelLibs();
 
-    return {
-        presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
+//     return {
+//         presets:       [{ plugins: [transformForOfAsArray] }, presetFallback],
+//         sourceMaps:    false,
+//         retainLines:   true,
+//         ast:           false,
+//         babelrc:       false,
+//         highlightCode: false
+//     };
+// }
+
+function downgradeES (fnCode) {
+    // const { babel } = loadBabelLibs();
+    const babel = require('@babel/core');
+
+    // const opts     = getBabelOptions();
+    const compiled = babel.transform(fnCode, {
         sourceMaps:    false,
         retainLines:   true,
         ast:           false,
         babelrc:       false,
-        highlightCode: false
-    };
-}
-
-function downgradeES (fnCode) {
-    const { babel } = loadBabelLibs();
-
-    const opts     = getBabelOptions();
-    const compiled = babel.transform(fnCode, opts);
+        highlightCode: false,
+        presets:       [
+            [
+                '@babel/preset-env',
+                {
+                    targets: {
+                        browsers: ['last 2 versions']
+                    },
+                },
+            ],
+            '@babel/preset-react',
+        ],
+    });
 
     return compiled.code
         .replace(USE_STRICT_RE, '')
