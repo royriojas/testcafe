@@ -50,7 +50,8 @@
   ],
   "scripts": {
     "test": "gulp travis",
-    "publish-please": "publish-please"
+    "publish-please": "publish-please",
+    "prepublish": "gulp build"
   },
   "dependencies": {
     "@types/node": "^10.12.19",
