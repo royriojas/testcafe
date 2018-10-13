@@ -64,8 +64,9 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
                 [
                     '@babel/preset-env',
                     {
+                        loose:   true,
                         targets: {
-                            node: 'current',
+                            node: '6',
                         },
                     },
                 ],
@@ -73,18 +74,10 @@ export default class ESNextTestFileCompiler extends APIBasedTestFileCompilerBase
                 '@babel/preset-react',
             ],
             plugins: [
-                ['module-resolver', {
+                ['babel-plugin-module-resolver', {
                     'resolvePath': source => {
                         if (source === 'testcafe')
                             return APIBasedTestFileCompilerBase.EXPORTABLE_LIB_PATH;
-                        // if (BABEL_RUNTIME_RE.test(source)) {
-                        //     try {
-                        //         return require.resolve(source);
-                        //     }
-                        //     catch (err) {
-                        //         return source;
-                        //     }
-                        // }
                         return source;
                     }
                 }],
