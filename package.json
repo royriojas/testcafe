@@ -1,5 +1,5 @@
 {
-  "name": "testcafe",
+  "name": "@redisrupt/testcafe",
   "description": "Automated browser testing for the modern web development stack.",
   "license": "MIT",
   "version": "1.1.3",
