@@ -1,5 +1,4 @@
 import getStackFrames from 'callsite';
-import BabelPromise from 'babel-runtime/core-js/promise';
 
 const TRACKING_MARK_RE = /^\$\$testcafe_test_run\$\$(\S+)\$\$$/;
 const STACK_CAPACITY   = 5000;
@@ -46,9 +45,6 @@ export default {
             global.setInterval  = this._createContextSwitchingFunctionHook(global.setInterval, 1);
             global.setImmediate = this._createContextSwitchingFunctionHook(global.setImmediate, 1);
             process.nextTick    = this._createContextSwitchingFunctionHook(process.nextTick, 1);
-
-            BabelPromise.prototype.then  = this._createContextSwitchingFunctionHook(BabelPromise.prototype.then, 2);
-            BabelPromise.prototype.catch = this._createContextSwitchingFunctionHook(BabelPromise.prototype.catch, 1);
 
             if (global.Promise) {
                 global.Promise.prototype.then  = this._createContextSwitchingFunctionHook(global.Promise.prototype.then, 2);
