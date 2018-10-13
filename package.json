@@ -50,8 +50,7 @@
   ],
   "scripts": {
     "test": "gulp travis",
-    "publish-please": "publish-please",
-    "prepublish": "publish-please guard"
+    "publish-please": "publish-please"
   },
   "dependencies": {
     "@babel/cli": "7.1.2",
