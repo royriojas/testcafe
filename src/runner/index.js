@@ -1,4 +1,5 @@
 import { resolve as resolvePath } from 'path';
+import debug from 'debug';
 import Promise from 'pinkie';
 import promisifyEvent from 'promisify-event';
 import mapReverse from 'map-reverse';
@@ -8,51 +9,75 @@ import Bootstrapper from './bootstrapper';
 import Reporter from '../reporter';
 import Task from './task';
 import { GeneralError } from '../errors/runtime';
-import MESSAGE from '../errors/runtime/message';
+import { RUNTIME_ERRORS } from '../errors/types';
 import { assertType, is } from '../errors/runtime/type-assertions';
-import renderForbiddenCharsList from '../errors/render-forbidden-chars-list';
+import { renderForbiddenCharsList } from '../errors/test-run/utils';
+import detectFFMPEG from '../utils/detect-ffmpeg';
 import checkFilePath from '../utils/check-file-path';
 import { addRunningTest, removeRunningTest, startHandlingTestErrors, stopHandlingTestErrors } from '../utils/handle-errors';
+import OPTION_NAMES from '../configuration/option-names';
+import FlagList from '../utils/flag-list';
+import prepareReporters from '../utils/prepare-reporters';
 
-const DEFAULT_SELECTOR_TIMEOUT  = 10000;
-const DEFAULT_ASSERTION_TIMEOUT = 3000;
-const DEFAULT_PAGE_LOAD_TIMEOUT = 3000;
+const DEBUG_LOGGER = debug('testcafe:runner');
 
 export default class Runner extends EventEmitter {
-    constructor (proxy, browserConnectionGateway, options = {}) {
+    constructor (proxy, browserConnectionGateway, configuration) {
         super();
 
         this.proxy               = proxy;
-        this.bootstrapper        = new Bootstrapper(browserConnectionGateway);
+        this.bootstrapper        = this._createBootstrapper(browserConnectionGateway);
         this.pendingTaskPromises = [];
+        this.configuration       = configuration;
+        this.isCli               = false;
 
-        this.opts = {
-            externalProxyHost:      null,
-            proxyBypass:            null,
-            screenshotPath:         null,
-            takeScreenshotsOnFails: false,
-            screenshotPathPattern:  null,
-            skipJsErrors:           false,
-            quarantineMode:         false,
-            debugMode:              false,
-            retryTestPages:         options.retryTestPages,
-            selectorTimeout:        DEFAULT_SELECTOR_TIMEOUT,
-            pageLoadTimeout:        DEFAULT_PAGE_LOAD_TIMEOUT
-        };
+        // NOTE: This code is necessary only for displaying  marketing messages.
+        this.reporterPlugings = [];
+
+        this.apiMethodWasCalled = new FlagList({
+            initialFlagValue: false,
+            flags:            [OPTION_NAMES.src, OPTION_NAMES.browsers, OPTION_NAMES.reporter]
+        });
     }
 
-    static async _disposeTaskAndRelatedAssets (task, browserSet, testedApp) {
+    _createBootstrapper (browserConnectionGateway) {
+        return new Bootstrapper(browserConnectionGateway);
+    }
+
+    _disposeBrowserSet (browserSet) {
+        return browserSet.dispose().catch(e => DEBUG_LOGGER(e));
+    }
+
+    _disposeReporters (reporters) {
+        return Promise.all(reporters.map(reporter => reporter.dispose().catch(e => DEBUG_LOGGER(e))));
+    }
+
+    _disposeTestedApp (testedApp) {
+        return testedApp ? testedApp.kill().catch(e => DEBUG_LOGGER(e)) : Promise.resolve();
+    }
+
+    async _disposeTaskAndRelatedAssets (task, browserSet, reporters, testedApp) {
         task.abort();
-        task.removeAllListeners();
+        task.clearListeners();
 
-        await Runner._disposeBrowserSetAndTestedApp(browserSet, testedApp);
+        await this._disposeAssets(browserSet, reporters, testedApp);
     }
 
-    static async _disposeBrowserSetAndTestedApp (browserSet, testedApp) {
-        await browserSet.dispose();
+    _disposeAssets (browserSet, reporters, testedApp) {
+        return Promise.all([
+            this._disposeBrowserSet(browserSet),
+            this._disposeReporters(reporters),
+            this._disposeTestedApp(testedApp)
+        ]);
+    }
 
-        if (testedApp)
-            await testedApp.kill();
+    _prepareArrayParameter (array) {
+        array = flatten(array);
+
+        if (this.isCli)
+            return array.length === 0 ? void 0 : array;
+
+        return array;
     }
 
     _createCancelablePromise (taskPromise) {
@@ -81,12 +106,18 @@ export default class Runner extends EventEmitter {
         return failedTestCount;
     }
 
-    async _getTaskResult (task, browserSet, reporter, testedApp) {
+    async _getTaskResult (task, browserSet, reporters, testedApp) {
         task.on('browser-job-done', job => browserSet.releaseConnection(job.browserConnection));
 
+        const browserSetErrorPromise = promisifyEvent(browserSet, 'error');
+
+        const taskDonePromise = task.once('done')
+            .then(() => browserSetErrorPromise.cancel());
+
+
         const promises = [
-            promisifyEvent(task, 'done'),
-            promisifyEvent(browserSet, 'error')
+            taskDonePromise,
+            browserSetErrorPromise
         ];
 
         if (testedApp)
@@ -96,30 +127,34 @@ export default class Runner extends EventEmitter {
             await Promise.race(promises);
         }
         catch (err) {
-            await Runner._disposeTaskAndRelatedAssets(task, browserSet, testedApp);
+            await this._disposeTaskAndRelatedAssets(task, browserSet, reporters, testedApp);
 
             throw err;
         }
 
-        await Runner._disposeBrowserSetAndTestedApp(browserSet, testedApp);
+        await this._disposeAssets(browserSet, reporters, testedApp);
 
-        return this._getFailedTestCount(task, reporter);
+        return this._getFailedTestCount(task, reporters[0]);
+    }
+
+    _createTask (tests, browserConnectionGroups, proxy, opts) {
+        return new Task(tests, browserConnectionGroups, proxy, opts);
     }
 
     _runTask (reporterPlugins, browserSet, tests, testedApp) {
         let completed           = false;
-        const task              = new Task(tests, browserSet.browserConnectionGroups, this.proxy, this.opts);
+        const task              = this._createTask(tests, browserSet.browserConnectionGroups, this.proxy, this.configuration.getOptions());
         const reporters         = reporterPlugins.map(reporter => new Reporter(reporter.plugin, task, reporter.outStream));
-        const completionPromise = this._getTaskResult(task, browserSet, reporters[0], testedApp);
+        const completionPromise = this._getTaskResult(task, browserSet, reporters, testedApp);
 
-        task.once('start', startHandlingTestErrors);
+        task.on('start', startHandlingTestErrors);
 
-        if (!this.opts.skipUncaughtErrors) {
-            task.on('test-run-start', addRunningTest);
-            task.on('test-run-done', removeRunningTest);
+        if (!this.configuration.getOption(OPTION_NAMES.skipUncaughtErrors)) {
+            task.once('test-run-start', addRunningTest);
+            task.once('test-run-done', removeRunningTest);
         }
 
-        task.once('done', stopHandlingTestErrors);
+        task.on('done', stopHandlingTestErrors);
 
         const setCompleted = () => {
             completed = true;
@@ -131,7 +166,7 @@ export default class Runner extends EventEmitter {
 
         const cancelTask = async () => {
             if (!completed)
-                await Runner._disposeTaskAndRelatedAssets(task, browserSet, testedApp);
+                await this._disposeTaskAndRelatedAssets(task, browserSet, reporters, testedApp);
         };
 
         return { completionPromise, cancelTask };
@@ -141,135 +176,265 @@ export default class Runner extends EventEmitter {
         assets.forEach(asset => this.proxy.GET(asset.path, asset.info));
     }
 
-    _validateRunOptions () {
-        const concurrency           = this.bootstrapper.concurrency;
-        const speed                 = this.opts.speed;
-        const screenshotPath        = this.opts.screenshotPath;
-        const screenshotPathPattern = this.opts.screenshotPathPattern;
-        let proxyBypass             = this.opts.proxyBypass;
+    _validateSpeedOption () {
+        const speed = this.configuration.getOption(OPTION_NAMES.speed);
+
+        if (speed === void 0)
+            return;
+
+        if (typeof speed !== 'number' || isNaN(speed) || speed < 0.01 || speed > 1)
+            throw new GeneralError(RUNTIME_ERRORS.invalidSpeedValue);
+    }
+
+    _validateConcurrencyOption () {
+        const concurrency = this.configuration.getOption(OPTION_NAMES.concurrency);
+
+        if (concurrency === void 0)
+            return;
+
+        if (typeof concurrency !== 'number' || isNaN(concurrency) || concurrency < 1)
+            throw new GeneralError(RUNTIME_ERRORS.invalidConcurrencyFactor);
+    }
+
+    _validateProxyBypassOption () {
+        let proxyBypass = this.configuration.getOption(OPTION_NAMES.proxyBypass);
+
+        if (proxyBypass === void 0)
+            return;
+
+        assertType([ is.string, is.array ], null, '"proxyBypass" argument', proxyBypass);
+
+        if (typeof proxyBypass === 'string')
+            proxyBypass = [proxyBypass];
+
+        proxyBypass = proxyBypass.reduce((arr, rules) => {
+            assertType(is.string, null, '"proxyBypass" argument', rules);
+
+            return arr.concat(rules.split(','));
+        }, []);
+
+        this.configuration.mergeOptions({ proxyBypass });
+    }
+
+    _validateScreenshotOptions () {
+        const screenshotPath        = this.configuration.getOption(OPTION_NAMES.screenshotPath);
+        const screenshotPathPattern = this.configuration.getOption(OPTION_NAMES.screenshotPathPattern);
 
         if (screenshotPath) {
             this._validateScreenshotPath(screenshotPath, 'screenshots base directory path');
 
-            this.opts.screenshotPath = resolvePath(screenshotPath);
+            this.configuration.mergeOptions({ [OPTION_NAMES.screenshotPath]: resolvePath(screenshotPath) });
         }
 
         if (screenshotPathPattern)
             this._validateScreenshotPath(screenshotPathPattern, 'screenshots path pattern');
 
-        if (typeof speed !== 'number' || isNaN(speed) || speed < 0.01 || speed > 1)
-            throw new GeneralError(MESSAGE.invalidSpeedValue);
+        if (!screenshotPath && screenshotPathPattern)
+            throw new GeneralError(RUNTIME_ERRORS.cannotUseScreenshotPathPatternWithoutBaseScreenshotPathSpecified);
+    }
 
-        if (typeof concurrency !== 'number' || isNaN(concurrency) || concurrency < 1)
-            throw new GeneralError(MESSAGE.invalidConcurrencyFactor);
+    async _validateVideoOptions () {
+        const videoPath            = this.configuration.getOption(OPTION_NAMES.videoPath);
+        const videoEncodingOptions = this.configuration.getOption(OPTION_NAMES.videoEncodingOptions);
 
-        if (proxyBypass) {
-            assertType([ is.string, is.array ], null, '"proxyBypass" argument', proxyBypass);
+        let videoOptions = this.configuration.getOption(OPTION_NAMES.videoOptions);
 
-            if (typeof proxyBypass === 'string')
-                proxyBypass = [proxyBypass];
+        if (!videoPath) {
+            if (videoOptions || videoEncodingOptions)
+                throw new GeneralError(RUNTIME_ERRORS.cannotSetVideoOptionsWithoutBaseVideoPathSpecified);
 
-            proxyBypass = proxyBypass.reduce((arr, rules) => {
-                assertType(is.string, null, '"proxyBypass" argument', rules);
-
-                return arr.concat(rules.split(','));
-            }, []);
-
-            this.opts.proxyBypass = proxyBypass;
+            return;
         }
+
+        this.configuration.mergeOptions({ [OPTION_NAMES.videoPath]: resolvePath(videoPath) });
+
+        if (!videoOptions) {
+            videoOptions = {};
+
+            this.configuration.mergeOptions({ [OPTION_NAMES.videoOptions]: videoOptions });
+        }
+
+        if (videoOptions.ffmpegPath)
+            videoOptions.ffmpegPath = resolvePath(videoOptions.ffmpegPath);
+        else
+            videoOptions.ffmpegPath = await detectFFMPEG();
+
+        if (!videoOptions.ffmpegPath)
+            throw new GeneralError(RUNTIME_ERRORS.cannotFindFFMPEG);
+    }
+
+    async _validateRunOptions () {
+        this._validateScreenshotOptions();
+        await this._validateVideoOptions();
+        this._validateSpeedOption();
+        this._validateConcurrencyOption();
+        this._validateProxyBypassOption();
+    }
+
+    _createRunnableConfiguration () {
+        return this.bootstrapper
+            .createRunnableConfiguration()
+            .then(runnableConfiguration => {
+                this.emit('done-bootstrapping');
+
+                return runnableConfiguration;
+            });
     }
 
     _validateScreenshotPath (screenshotPath, pathType) {
         const forbiddenCharsList = checkFilePath(screenshotPath);
 
         if (forbiddenCharsList.length)
-            throw new GeneralError(MESSAGE.forbiddenCharatersInScreenshotPath, screenshotPath, pathType, renderForbiddenCharsList(forbiddenCharsList));
+            throw new GeneralError(RUNTIME_ERRORS.forbiddenCharatersInScreenshotPath, screenshotPath, pathType, renderForbiddenCharsList(forbiddenCharsList));
+    }
+
+    _setBootstrapperOptions () {
+        this.configuration.prepare();
+        this.configuration.notifyAboutOverridenOptions();
+
+        this.bootstrapper.sources      = this.configuration.getOption(OPTION_NAMES.src) || this.bootstrapper.sources;
+        this.bootstrapper.browsers     = this.configuration.getOption(OPTION_NAMES.browsers) || this.bootstrapper.browsers;
+        this.bootstrapper.concurrency  = this.configuration.getOption(OPTION_NAMES.concurrency);
+        this.bootstrapper.appCommand   = this.configuration.getOption(OPTION_NAMES.appCommand) || this.bootstrapper.appCommand;
+        this.bootstrapper.appInitDelay = this.configuration.getOption(OPTION_NAMES.appInitDelay);
+        this.bootstrapper.filter       = this.configuration.getOption(OPTION_NAMES.filter) || this.bootstrapper.filter;
+        this.bootstrapper.reporters    = this.configuration.getOption(OPTION_NAMES.reporter) || this.bootstrapper.reporters;
     }
 
     // API
     embeddingOptions (opts) {
-        this._registerAssets(opts.assets);
-        this.opts.TestRunCtor = opts.TestRunCtor;
+        const { assets, TestRunCtor } = opts;
+
+        this._registerAssets(assets);
+        this.configuration.mergeOptions({ TestRunCtor });
 
         return this;
     }
 
     src (...sources) {
-        this.bootstrapper.sources = this.bootstrapper.sources.concat(flatten(sources));
+        if (this.apiMethodWasCalled.src)
+            throw new GeneralError(RUNTIME_ERRORS.multipleAPIMethodCallForbidden, OPTION_NAMES.src);
+
+        sources = this._prepareArrayParameter(sources);
+        this.configuration.mergeOptions({ [OPTION_NAMES.src]: sources });
+
+        this.apiMethodWasCalled.src = true;
 
         return this;
     }
 
     browsers (...browsers) {
-        this.bootstrapper.browsers = this.bootstrapper.browsers.concat(flatten(browsers));
+        if (this.apiMethodWasCalled.browsers)
+            throw new GeneralError(RUNTIME_ERRORS.multipleAPIMethodCallForbidden, OPTION_NAMES.browsers);
+
+        browsers = this._prepareArrayParameter(browsers);
+        this.configuration.mergeOptions({ browsers });
+
+        this.apiMethodWasCalled.browsers = true;
 
         return this;
     }
 
     concurrency (concurrency) {
-        this.bootstrapper.concurrency = concurrency;
+        this.configuration.mergeOptions({ concurrency });
 
         return this;
     }
 
-    reporter (name, outStream) {
-        this.bootstrapper.reporters.push({
-            name,
-            outStream
-        });
+    reporter (name, output) {
+        if (this.apiMethodWasCalled.reporter)
+            throw new GeneralError(RUNTIME_ERRORS.multipleAPIMethodCallForbidden, OPTION_NAMES.reporter);
+
+        let reporters = prepareReporters(name, output);
+
+        reporters = this._prepareArrayParameter(reporters);
+
+        this.configuration.mergeOptions({ [OPTION_NAMES.reporter]: reporters });
+
+        this.apiMethodWasCalled.reporter = true;
 
         return this;
     }
 
     filter (filter) {
-        this.bootstrapper.filter = filter;
+        this.configuration.mergeOptions({ filter });
 
         return this;
     }
 
-    useProxy (externalProxyHost, proxyBypass) {
-        this.opts.externalProxyHost = externalProxyHost;
-        this.opts.proxyBypass       = proxyBypass;
+    useProxy (proxy, proxyBypass) {
+        this.configuration.mergeOptions({ proxy, proxyBypass });
 
         return this;
     }
 
-    screenshots (path, takeOnFails = false, pattern = null) {
-        this.opts.takeScreenshotsOnFails = takeOnFails;
-        this.opts.screenshotPath         = path;
-        this.opts.screenshotPathPattern  = pattern;
+    screenshots (path, takeOnFails, pattern) {
+        this.configuration.mergeOptions({
+            [OPTION_NAMES.screenshotPath]:         path,
+            [OPTION_NAMES.takeScreenshotsOnFails]: takeOnFails,
+            [OPTION_NAMES.screenshotPathPattern]:  pattern
+        });
+
+        return this;
+    }
+
+    video (path, options, encodingOptions) {
+        this.configuration.mergeOptions({
+            [OPTION_NAMES.videoPath]:            path,
+            [OPTION_NAMES.videoOptions]:         options,
+            [OPTION_NAMES.videoEncodingOptions]: encodingOptions
+        });
 
         return this;
     }
 
     startApp (command, initDelay) {
-        this.bootstrapper.appCommand   = command;
-        this.bootstrapper.appInitDelay = initDelay;
+        this.configuration.mergeOptions({
+            [OPTION_NAMES.appCommand]:   command,
+            [OPTION_NAMES.appInitDelay]: initDelay
+        });
 
         return this;
     }
 
-    run ({ skipJsErrors, disablePageReloads, quarantineMode, debugMode, selectorTimeout, assertionTimeout, pageLoadTimeout, speed = 1, debugOnFail, skipUncaughtErrors, stopOnFirstFail } = {}) {
-        this.opts.skipJsErrors       = !!skipJsErrors;
-        this.opts.disablePageReloads = !!disablePageReloads;
-        this.opts.quarantineMode     = !!quarantineMode;
-        this.opts.debugMode          = !!debugMode;
-        this.opts.debugOnFail        = !!debugOnFail;
-        this.opts.selectorTimeout    = selectorTimeout === void 0 ? DEFAULT_SELECTOR_TIMEOUT : selectorTimeout;
-        this.opts.assertionTimeout   = assertionTimeout === void 0 ? DEFAULT_ASSERTION_TIMEOUT : assertionTimeout;
-        this.opts.pageLoadTimeout    = pageLoadTimeout === void 0 ? DEFAULT_PAGE_LOAD_TIMEOUT : pageLoadTimeout;
-        this.opts.speed              = speed;
-        this.opts.skipUncaughtErrors = !!skipUncaughtErrors;
-        this.opts.stopOnFirstFail    = !!stopOnFirstFail;
+    run (options = {}) {
+        this.apiMethodWasCalled.reset();
+
+        const {
+            skipJsErrors,
+            disablePageReloads,
+            quarantineMode,
+            debugMode,
+            selectorTimeout,
+            assertionTimeout,
+            pageLoadTimeout,
+            speed,
+            debugOnFail,
+            skipUncaughtErrors,
+            stopOnFirstFail
+        } = options;
+
+        this.configuration.mergeOptions({
+            skipJsErrors:       skipJsErrors,
+            disablePageReloads: disablePageReloads,
+            quarantineMode:     quarantineMode,
+            debugMode:          debugMode,
+            debugOnFail:        debugOnFail,
+            selectorTimeout:    selectorTimeout,
+            assertionTimeout:   assertionTimeout,
+            pageLoadTimeout:    pageLoadTimeout,
+            speed:              speed,
+            skipUncaughtErrors: skipUncaughtErrors,
+            stopOnFirstFail:    stopOnFirstFail
+        });
+
+        this._setBootstrapperOptions();
 
         const runTaskPromise = Promise.resolve()
-            .then(() => {
-                this._validateRunOptions();
-
-                return this.bootstrapper.createRunnableConfiguration();
-            })
+            .then(() => this._validateRunOptions())
+            .then(() => this._createRunnableConfiguration())
             .then(({ reporterPlugins, browserSet, tests, testedApp }) => {
-                this.emit('done-bootstrapping');
+                this.reporterPlugings = reporterPlugins;
 
                 return this._runTask(reporterPlugins, browserSet, tests, testedApp);
             });

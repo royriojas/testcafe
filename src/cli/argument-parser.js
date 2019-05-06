@@ -1,14 +1,13 @@
-import { resolve, dirname } from 'path';
 import { Command } from 'commander';
 import dedent from 'dedent';
 import { readSync as read } from 'read-file-relative';
-import makeDir from 'make-dir';
 import { GeneralError } from '../errors/runtime';
-import MESSAGE from '../errors/runtime/message';
+import { RUNTIME_ERRORS } from '../errors/types';
 import { assertType, is } from '../errors/runtime/type-assertions';
 import getViewPortWidth from '../utils/get-viewport-width';
 import { wordWrap, splitQuotedText } from '../utils/string';
-import parseSslOptions from './parse-ssl-options';
+import { getSSLOptions, getVideoOptions, getMetaOptions, getGrepOptions } from '../utils/get-options';
+import getFilterFn from '../utils/get-filter-fn';
 
 const REMOTE_ALIAS_RE = /^remote(?::(\d*))?$/;
 
@@ -48,18 +47,6 @@ export default class CLIArgumentParser {
         return parseInt(value, 10);
     }
 
-    static _optionValueToRegExp (name, value) {
-        if (value === void 0)
-            return value;
-
-        try {
-            return new RegExp(value);
-        }
-        catch (err) {
-            throw new GeneralError(MESSAGE.optionValueIsNotValidRegExp, name);
-        }
-    }
-
     static _getDescription () {
         // NOTE: add empty line to workaround commander-forced indentation on the first line.
         return '\n' + wordWrap(DESCRIPTION, 2, getViewPortWidth(process.stdout));
@@ -69,7 +56,6 @@ export default class CLIArgumentParser {
         const version = JSON.parse(read('../../package.json')).version;
 
         this.program
-
             .version(version, '-v, --version')
             .usage('[options] <comma-separated-browser-list> <file-or-glob ...>')
             .description(CLIArgumentParser._getDescription())
@@ -89,6 +75,9 @@ export default class CLIArgumentParser {
             .option('-F, --fixture-grep <pattern>', 'run only fixtures matching the specified pattern')
             .option('-a, --app <command>', 'launch the tested app using the specified command before running tests')
             .option('-c, --concurrency <number>', 'run tests concurrently')
+            .option('-L, --live', 'enable live mode. In this mode, TestCafe watches for changes you make in the test files. These changes immediately restart the tests so that you can see the effect.')
+            .option('--test-meta <key=value[,key2=value2,...]>', 'run only tests with matching metadata')
+            .option('--fixture-meta <key=value[,key2=value2,...]>', 'run only fixtures with matching metadata')
             .option('--debug-on-fail', 'pause the test if it fails')
             .option('--app-init-delay <ms>', 'specify how much time it takes for the tested app to initialize')
             .option('--selector-timeout <ms>', 'set the amount of time within which selectors make attempts to obtain a node to be returned')
@@ -98,8 +87,11 @@ export default class CLIArgumentParser {
             .option('--ports <port1,port2>', 'specify custom port numbers')
             .option('--hostname <name>', 'specify the hostname')
             .option('--proxy <host>', 'specify the host of the proxy server')
-            .option('--ssl <options>', 'specify SSL options to run TestCafe proxy server over the HTTPS protocol')
             .option('--proxy-bypass <rules>', 'specify a comma-separated list of rules that define URLs accessed bypassing the proxy server')
+            .option('--ssl <options>', 'specify SSL options to run TestCafe proxy server over the HTTPS protocol')
+            .option('--video <path>', ' record videos of test runs')
+            .option('--video-options <option=value[,...]>', 'specify video recording options')
+            .option('--video-encoding-options <option=value[,...]>', 'specify encoding options')
             .option('--disable-page-reloads', 'disable page reloads between tests')
             .option('--dev', 'enables mechanisms to log and diagnose errors')
             .option('--qr-code', 'outputs QR-code that repeats URLs used to connect the remote browsers')
@@ -121,26 +113,20 @@ export default class CLIArgumentParser {
         return true;
     }
 
-    _parseFilteringOptions () {
-        this.opts.testGrep    = CLIArgumentParser._optionValueToRegExp('--test-grep', this.opts.testGrep);
-        this.opts.fixtureGrep = CLIArgumentParser._optionValueToRegExp('--fixture-grep', this.opts.fixtureGrep);
+    async _parseFilteringOptions () {
+        if (this.opts.testGrep)
+            this.opts.testGrep = getGrepOptions('--test-grep', this.opts.testGrep);
 
-        this.filter = (testName, fixtureName) => {
+        if (this.opts.fixtureGrep)
+            this.opts.fixtureGrep = getGrepOptions('--fixture-grep', this.opts.fixtureGrep);
 
-            if (this.opts.test && testName !== this.opts.test)
-                return false;
+        if (this.opts.testMeta)
+            this.opts.testMeta = await getMetaOptions('--test-meta', this.opts.testMeta);
 
-            if (this.opts.testGrep && !this.opts.testGrep.test(testName))
-                return false;
+        if (this.opts.fixtureMeta)
+            this.opts.fixtureMeta = await getMetaOptions('--fixture-meta', this.opts.fixtureMeta);
 
-            if (this.opts.fixture && fixtureName !== this.opts.fixture)
-                return false;
-
-            if (this.opts.fixtureGrep && !this.opts.fixtureGrep.test(fixtureName))
-                return false;
-
-            return true;
-        };
+        this.filter = getFilterFn(this.opts);
     }
 
     _parseAppInitDelay () {
@@ -182,7 +168,7 @@ export default class CLIArgumentParser {
 
     _parseConcurrency () {
         if (this.opts.concurrency)
-            this.concurrency = parseInt(this.opts.concurrency, 10);
+            this.opts.concurrency = parseInt(this.opts.concurrency, 10);
     }
 
     _parsePorts () {
@@ -192,7 +178,7 @@ export default class CLIArgumentParser {
                 .map(CLIArgumentParser._parsePortNumber);
 
             if (this.opts.ports.length < 2)
-                throw new GeneralError(MESSAGE.portsOptionRequiresTwoNumbers);
+                throw new GeneralError(RUNTIME_ERRORS.portsOptionRequiresTwoNumbers);
         }
     }
 
@@ -203,42 +189,37 @@ export default class CLIArgumentParser {
             .filter(browser => browser && this._filterAndCountRemotes(browser));
     }
 
-    _parseSslOptions () {
+    async _parseSslOptions () {
         if (this.opts.ssl)
-            this.opts.ssl = parseSslOptions(this.opts.ssl);
+            this.opts.ssl = await getSSLOptions(this.opts.ssl);
     }
 
     async _parseReporters () {
-        if (!this.opts.reporter) {
-            this.opts.reporters = [];
-            return;
-        }
+        const reporters = this.opts.reporter ? this.opts.reporter.split(',') : [];
 
-        const reporters = this.opts.reporter.split(',');
-
-        this.opts.reporters = reporters.map(reporter => {
+        this.opts.reporter = reporters.map(reporter => {
             const separatorIndex = reporter.indexOf(':');
 
             if (separatorIndex < 0)
                 return { name: reporter };
 
-            const name    = reporter.substring(0, separatorIndex);
-            const outFile = reporter.substring(separatorIndex + 1);
+            const name   = reporter.substring(0, separatorIndex);
+            const output = reporter.substring(separatorIndex + 1);
 
-            return { name, outFile };
+            return { name, output };
         });
-
-        for (const reporter of this.opts.reporters) {
-            if (reporter.outFile) {
-                reporter.outFile = resolve(this.cwd, reporter.outFile);
-
-                await makeDir(dirname(reporter.outFile));
-            }
-        }
     }
 
     _parseFileList () {
         this.src = this.program.args.slice(1);
+    }
+
+    async _parseVideoOptions () {
+        if (this.opts.videoOptions)
+            this.opts.videoOptions = await getVideoOptions(this.opts.videoOptions);
+
+        if (this.opts.videoEncodingOptions)
+            this.opts.videoEncodingOptions = await getVideoOptions(this.opts.videoEncodingOptions);
     }
 
     _getProviderName () {
@@ -247,6 +228,8 @@ export default class CLIArgumentParser {
 
     async parse (argv) {
         this.program.parse(argv);
+
+        this.args = this.program.args;
 
         this.opts = this.program.opts();
 
@@ -257,7 +240,6 @@ export default class CLIArgumentParser {
             return;
         }
 
-        this._parseFilteringOptions();
         this._parseSelectorTimeout();
         this._parseAssertionTimeout();
         this._parsePageLoadTimeout();
@@ -266,9 +248,11 @@ export default class CLIArgumentParser {
         this._parsePorts();
         this._parseBrowserList();
         this._parseConcurrency();
-        this._parseSslOptions();
         this._parseFileList();
 
+        await this._parseFilteringOptions();
+        await this._parseVideoOptions();
+        await this._parseSslOptions();
         await this._parseReporters();
     }
 }

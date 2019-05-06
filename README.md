@@ -5,11 +5,11 @@ This fork adds the following:
 - Compile modules using Babel 7
 - Typescript support using Babel 7 instead of the typescript compiler
 
-<h1 align="center">
-    <a href="https://devexpress.github.io/testcafe">
-        <img src="https://raw.githubusercontent.com/DevExpress/testcafe/master/media/testcafe-logo.svg?sanitize=true" alt="testcafe" />
-    </a>
-</h1>
+<p align="center">
+  <a href="https://www.devexpress.com/products/testcafestudio/?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-banner">
+    <img src="https://raw.github.com/DevExpress/testcafe/master/media/testcafe-studio-banner.png" alt="testcafe-studio" />
+  </a>
+</p>
 
 <p align="center">
 <a href="https://ci.appveyor.com/project/DevExpress/testcafe"><img alt="Functional Windows desktop" src="https://ci.appveyor.com/api/projects/status/ftelkyuiji8lyadf?svg=true"></a>
@@ -22,10 +22,11 @@ This fork adds the following:
 </p>
 
 <p align="center">
-<a href="https://devexpress.github.io/testcafe">https://devexpress.github.io/testcafe</a>
+  <a href="https://devexpress.github.io/testcafe/">Homepage</a> &nbsp&nbsp•&nbsp&nbsp
+  <a href="https://devexpress.github.io/testcafe/documentation/getting-started/">Documentation</a> &nbsp&nbsp•&nbsp&nbsp
+  <a href="https://devexpress.github.io/testcafe/faq/">FAQ</a> &nbsp&nbsp•&nbsp&nbsp
+  <a href="https://devexpress.github.io/testcafe/support/">Support</a>
 </p>
-
-----
 
 * **Works on all popular environments**: TestCafe runs on Windows, MacOS, and Linux. It supports desktop, mobile, remote and cloud [browsers](https://devexpress.github.io/testcafe/documentation/using-testcafe/common-concepts/browsers/browser-support.html) (UI or headless).
 * **1 minute to set up**: You [do not need WebDriver](https://devexpress.github.io/testcafe/faq/#i-have-heard-that-testcafe-does-not-use-selenium-how-does-it-operate) or any other testing software. Install TestCafe with one command, and you are ready to test: `npm install -g testcafe`
@@ -40,14 +41,16 @@ This fork adds the following:
 ## Table of contents
 
 * [Features](#features)
-* [IDE for End-to-End Web Testing](#ide-for-end-to-end-web-testing)
+* [TestCafe Studio: IDE for End-to-End Web Testing](#testcafe-studio-ide-for-end-to-end-web-testing)
 * [Getting Started](#getting-started)
 * [Documentation](#documentation)
-* [Community](#community)
-* [Badge](#badge)
+* [Get Help](#get-help)
+* [Issue Tracker](#issue-tracker)
+* [Stay in Touch](#stay-in-touch)
 * [Contributing](#contributing)
 * [Plugins](#plugins)
-* [Different versions of TestCafe](#different-versions-of-testcafe)
+* [Different Versions of TestCafe](#different-versions-of-testcafe)
+* [Badge](#badge)
 * [License](#license)
 * [Creators](#creators)
 
@@ -90,11 +93,11 @@ const macOSInput = Selector('.column').find('label').withText('MacOS').child('in
 You can run TestCafe from a console, and its reports can be viewed in a CI system's interface
 (TeamCity, Jenkins, Travis & etc.)
 
-## IDE for End-to-End Web Testing
+## TestCafe Studio: IDE for End-to-End Web Testing
 
-We've got one more tool for you!
+TestCafe works great for JavaScript developers, but at some point you will need to delegate testing tasks to your Q&A department. If that's the case and you are looking for a codeless way to record and maintain tests compatible with your existing infrastructure, check out [TestCafe Studio](https://www.devexpress.com/products/testcafestudio/?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-ide) - a testing IDE built on top of the open-source TestCafe.
 
-Check out [TestCafe Studio](https://testcafe-studio.devexpress.com): all the perks of TestCafe + GUI + Visual Test Recorder
+Read the following article to learn how TestCafe Studio could fit into your workflow: [What's Better than TestCafe? TestCafe Studio](https://www.devexpress.com/products/testcafestudio/qa-end-to-end-web-testing.xml).
 
 ![Get Started with TestCafe Studio](https://raw.githubusercontent.com/DevExpress/testcafe/master/media/testcafe-studio-get-started.gif)
 
@@ -165,31 +168,25 @@ Read the [Getting Started](https://devexpress.github.io/testcafe/documentation/g
 
 ## Documentation
 
-Go to our website for full [documentation](http://devexpress.github.io/testcafe/documentation/using-testcafe/) on TestCafe.
+Go to our website for full [documentation](https://devexpress.github.io/testcafe/documentation/getting-started/) on TestCafe.
 
-## Community
+## Get Help
+
+Join the TestCafe community on Stack Overflow to get help. Ask and answer [questions with the TestCafe tag](https://stackoverflow.com/questions/tagged/testcafe).
+
+## Issue Tracker
+
+Use our GitHub issues page to [report bugs](https://github.com/DevExpress/testcafe/issues/new?template=bug-report.md) and [suggest improvements](https://github.com/DevExpress/testcafe/issues/new?template=feature_request.md).
+
+## Stay in Touch
 
 Follow us on [Twitter](https://twitter.com/DXTestCafe). We post TestCafe news and updates, several times a week.
 
-## Badge
-
-Show everyone you are using TestCafe: ![Tested with TestCafe](https://img.shields.io/badge/tested%20with-TestCafe-2fa4cf.svg)
-
-To display this badge, add the following code to your repository readme:
-
-```html
-<a href="https://github.com/DevExpress/testcafe">
-    <img alt="Tested with TestCafe" src="https://img.shields.io/badge/tested%20with-TestCafe-2fa4cf.svg">
-</a>
-```
-
 ## Contributing
 
-Report bugs and request features on our [issues page](https://github.com/DevExpress/testcafe/issues).<br/>
-Ask and answer questions on StackOverflow. We review and answer [questions with the TestCafe tag](https://stackoverflow.com/questions/tagged/testcafe).<br/>
-For more information on how to help us improve TestCafe, see the [CONTRIBUTING.md](https://github.com/DevExpress/testcafe/blob/master/CONTRIBUTING.md).
+Read our [Contributing Guide](https://github.com/DevExpress/testcafe/blob/master/CONTRIBUTING.md) to learn how to contribute to the project.
 
-You can use these plugin generators to create your own plugins:
+To create your own plugin for TestCafe, you can use these plugin generators:
 
 * [Build a browser provider](https://devexpress.github.io/testcafe/documentation/extending-testcafe/browser-provider-plugin/)
   to set up tests on your on-premises server farm, to use a cloud testing platform, or to start your local browsers in a special way. Use this [Yeoman generator](https://www.npmjs.com/package/generator-testcafe-browser-provider) to write only a few lines of code.
@@ -198,13 +195,43 @@ You can use these plugin generators to create your own plugins:
 
 If you want your plugin to be listed below, [send us a note in a Github issue](https://github.com/DevExpress/testcafe/issues/new).
 
+Thank you to all the people who already contributed to TestCafe!
+
+[<img alt="Nuarat" src="https://avatars0.githubusercontent.com/u/11683678?v=4&s=117" width="117">](https://github.com/Nuarat) |[<img alt="Farfurix" src="https://avatars2.githubusercontent.com/u/30019338?v=4&s=117" width="117">](https://github.com/Farfurix) |[<img alt="aleks-pro" src="https://avatars1.githubusercontent.com/u/14822473?v=4&s=117" width="117">](https://github.com/aleks-pro) |[<img alt="ericyd" src="https://avatars2.githubusercontent.com/u/8379268?v=4&s=117" width="117">](https://github.com/ericyd) |[<img alt="NickCis" src="https://avatars0.githubusercontent.com/u/174561?v=4&s=117" width="117">](https://github.com/NickCis) |[<img alt="andrewbranch" src="https://avatars0.githubusercontent.com/u/3277153?v=4&s=117" width="117">](https://github.com/andrewbranch) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[Nuarat](https://github.com/Nuarat) |[Farfurix](https://github.com/Farfurix) |[aleks-pro](https://github.com/aleks-pro) |[ericyd](https://github.com/ericyd) |[NickCis](https://github.com/NickCis) |[andrewbranch](https://github.com/andrewbranch) |
+
+[<img alt="radarhere" src="https://avatars2.githubusercontent.com/u/3112309?v=4&s=117" width="117">](https://github.com/radarhere) |[<img alt="ai" src="https://avatars1.githubusercontent.com/u/19343?v=4&s=117" width="117">](https://github.com/ai) |[<img alt="AndyWendt" src="https://avatars0.githubusercontent.com/u/6130713?v=4&s=117" width="117">](https://github.com/AndyWendt) |[<img alt="arubtsov" src="https://avatars0.githubusercontent.com/u/10169557?v=4&s=117" width="117">](https://github.com/arubtsov) |[<img alt="lzxb" src="https://avatars0.githubusercontent.com/u/8424643?v=4&s=117" width="117">](https://github.com/lzxb) |[<img alt="caseyWebb" src="https://avatars3.githubusercontent.com/u/5419074?v=4&s=117" width="117">](https://github.com/caseyWebb) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[radarhere](https://github.com/radarhere) |[ai](https://github.com/ai) |[AndyWendt](https://github.com/AndyWendt) |[arubtsov](https://github.com/arubtsov) |[lzxb](https://github.com/lzxb) |[caseyWebb](https://github.com/caseyWebb) |
+
+[<img alt="smockle" src="https://avatars1.githubusercontent.com/u/3104489?v=4&s=117" width="117">](https://github.com/smockle) |[<img alt="beyondcompute" src="https://avatars0.githubusercontent.com/u/248055?v=4&s=117" width="117">](https://github.com/beyondcompute) |[<img alt="GeoffreyBooth" src="https://avatars2.githubusercontent.com/u/456802?v=4&s=117" width="117">](https://github.com/GeoffreyBooth) |[<img alt="mcjim" src="https://avatars0.githubusercontent.com/u/485440?v=4&s=117" width="117">](https://github.com/mcjim) |[<img alt="dej611" src="https://avatars1.githubusercontent.com/u/924948?v=4&s=117" width="117">](https://github.com/dej611) |[<img alt="MatthewNielsen27" src="https://avatars2.githubusercontent.com/u/35040439?v=4&s=117" width="117">](https://github.com/MatthewNielsen27) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[smockle](https://github.com/smockle) |[beyondcompute](https://github.com/beyondcompute) |[GeoffreyBooth](https://github.com/GeoffreyBooth) |[mcjim](https://github.com/mcjim) |[dej611](https://github.com/dej611) |[MatthewNielsen27](https://github.com/MatthewNielsen27) |
+
+[<img alt="renancouto" src="https://avatars0.githubusercontent.com/u/230893?v=4&s=117" width="117">](https://github.com/renancouto) |[<img alt="honsq90" src="https://avatars3.githubusercontent.com/u/1791439?v=4&s=117" width="117">](https://github.com/honsq90) |[<img alt="sgrillon14" src="https://avatars0.githubusercontent.com/u/5530550?v=4&s=117" width="117">](https://github.com/sgrillon14) |[<img alt="tobiasbueschel" src="https://avatars3.githubusercontent.com/u/13087421?v=4&s=117" width="117">](https://github.com/tobiasbueschel) |[<img alt="raspo" src="https://avatars2.githubusercontent.com/u/927264?v=4&s=117" width="117">](https://github.com/raspo) |[<img alt="varunkumar" src="https://avatars1.githubusercontent.com/u/509433?v=4&s=117" width="117">](https://github.com/varunkumar) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[renancouto](https://github.com/renancouto) |[honsq90](https://github.com/honsq90) |[sgrillon14](https://github.com/sgrillon14) |[tobiasbueschel](https://github.com/tobiasbueschel) |[raspo](https://github.com/raspo) |[varunkumar](https://github.com/varunkumar) |
+
+[<img alt="theghostbel" src="https://avatars2.githubusercontent.com/u/482899?v=4&s=117" width="117">](https://github.com/theghostbel) |[<img alt="vitalics" src="https://avatars2.githubusercontent.com/u/8816260?v=4&s=117" width="117">](https://github.com/vitalics) |[<img alt="aha-oretama" src="https://avatars0.githubusercontent.com/u/7259161?v=4&s=117" width="117">](https://github.com/aha-oretama) |[<img alt="bsmithb2" src="https://avatars2.githubusercontent.com/u/1773789?v=4&s=117" width="117">](https://github.com/bsmithb2) |[<img alt="link89" src="https://avatars2.githubusercontent.com/u/3314130?v=4&s=117" width="117">](https://github.com/link89) |[<img alt="murajun1978" src="https://avatars3.githubusercontent.com/u/911903?v=4&s=117" width="117">](https://github.com/murajun1978) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[theghostbel](https://github.com/theghostbel) |[vitalics](https://github.com/vitalics) |[aha-oretama](https://github.com/aha-oretama) |[bsmithb2](https://github.com/bsmithb2) |[link89](https://github.com/link89) |[murajun1978](https://github.com/murajun1978) |
+
+[<img alt="VasilyStrelyaev" src="https://avatars1.githubusercontent.com/u/11459924?v=4&s=117" width="117">](https://github.com/VasilyStrelyaev) |[<img alt="AndreyBelym" src="https://avatars1.githubusercontent.com/u/4479386?v=4&s=117" width="117">](https://github.com/AndreyBelym) |[<img alt="AlexanderMoskovkin" src="https://avatars0.githubusercontent.com/u/12047804?v=4&s=117" width="117">](https://github.com/AlexanderMoskovkin) |[<img alt="inikulin" src="https://avatars1.githubusercontent.com/u/453071?v=4&s=117" width="117">](https://github.com/inikulin) |[<img alt="helen-dikareva" src="https://avatars1.githubusercontent.com/u/12034551?v=4&s=117" width="117">](https://github.com/helen-dikareva) |[<img alt="miherlosev" src="https://avatars2.githubusercontent.com/u/4133518?v=4&s=117" width="117">](https://github.com/miherlosev) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[VasilyStrelyaev](https://github.com/VasilyStrelyaev) |[AndreyBelym](https://github.com/AndreyBelym) |[AlexanderMoskovkin](https://github.com/AlexanderMoskovkin) |[inikulin](https://github.com/inikulin) |[helen-dikareva](https://github.com/helen-dikareva) |[miherlosev](https://github.com/miherlosev) |
+
+[<img alt="AlexKamaev" src="https://avatars3.githubusercontent.com/u/1678902?v=4&s=117" width="117">](https://github.com/AlexKamaev) |[<img alt="MargaritaLoseva" src="https://avatars2.githubusercontent.com/u/12034505?v=4&s=117" width="117">](https://github.com/MargaritaLoseva) |[<img alt="churkin" src="https://avatars3.githubusercontent.com/u/5182202?v=4&s=117" width="117">](https://github.com/churkin) |[<img alt="LavrovArtem" src="https://avatars2.githubusercontent.com/u/5373460?v=4&s=117" width="117">](https://github.com/LavrovArtem) |[<img alt="kirovboris" src="https://avatars0.githubusercontent.com/u/3633477?v=4&s=117" width="117">](https://github.com/kirovboris) |[<img alt="AlexSkorkin" src="https://avatars3.githubusercontent.com/u/995726?v=4&s=117" width="117">](https://github.com/AlexSkorkin) |
+:---: |:---: |:---: |:---: |:---: |:---: |
+[AlexKamaev](https://github.com/AlexKamaev) |[MargaritaLoseva](https://github.com/MargaritaLoseva) |[churkin](https://github.com/churkin) |[LavrovArtem](https://github.com/LavrovArtem) |[kirovboris](https://github.com/kirovboris) |[AlexSkorkin](https://github.com/AlexSkorkin) |
+
+[<img alt="pietrovich" src="https://avatars2.githubusercontent.com/u/1728613?v=4&s=117" width="117">](https://github.com/pietrovich) |[<img alt="superroma" src="https://avatars0.githubusercontent.com/u/8553464?v=4&s=117" width="117">](https://github.com/superroma) |[<img alt="infctr" src="https://avatars1.githubusercontent.com/u/15550153?v=4&s=117" width="117">](https://github.com/infctr) |[<img alt="intermike" src="https://avatars0.githubusercontent.com/u/10540148?v=4&s=117" width="117">](https://github.com/intermike) |[<img alt="DevSide" src="https://avatars2.githubusercontent.com/u/6873926?v=4&s=117" width="117">](https://github.com/DevSide) |[<img alt="b12031106" src="https://avatars1.githubusercontent.com/u/2063566?v=4&s=117" width="117">](https://github.com/b12031106)
+:---: |:---: |:---: |:---: |:---: |:---: |
+[pietrovich](https://github.com/pietrovich) |[superroma](https://github.com/superroma) |[infctr](https://github.com/infctr) |[intermike](https://github.com/intermike) |[DevSide](https://github.com/DevSide) |[b12031106](https://github.com/b12031106)
+
 ## Plugins
 
 TestCafe developers and community members made these plugins:
-
-* **Rapid test development tool**<br/>
-  Changes in test code immediately restart the test, and you see the results instantly.
-  * [TestCafe Live](https://github.com/DevExpress/testcafe-live) (by [@DevExpress](https://github.com/DevExpress))
 
 * **Browser Providers**<br/>
   Allow you to use TestCafe with cloud browser providers and emulators.
@@ -247,35 +274,40 @@ TestCafe developers and community members made these plugins:
 * **ESLint**<br/>
   Use ESLint when writing and editing TestCafe tests.
   * [ESLint plugin](https://github.com/miherlosev/eslint-plugin-testcafe) (by [@miherlosev](https://github.com/miherlosev))
-  
-## Different versions of TestCafe
 
-There is a line of products called `TestCafe`. Below are the similarities and key differences between them.
+## Different Versions of TestCafe
 
-* All three versions share the same core features:
-  * No need for WebDriver, browser plugins or other tools.
-  * Cross-platform and cross-browser out of the box.
+| &nbsp; | [TestCafe](https://devexpress.github.io/testcafe) | [TestCafe Studio](https://www.devexpress.com/products/testcafestudio/?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff)  |
+| ------ |:-------------------------------------------------:|:-----------------------------------------------------------------------:|
+| No need for WebDriver, browser plugins or other tools | &#10003; | &#10003; |
+| Cross-platform and cross-browser out of the box | &#10003; | &#10003; |
+| Write tests in the latest JavaScript or TypeScript | &#10003; | &#10003; |
+| Clear and flexible [API](https://devexpress.github.io/testcafe/documentation/test-api/) supports ES6 and [PageModel pattern](https://devexpress.github.io/testcafe/documentation/recipes/using-page-model.html) | &#10003; | &#10003; |
+| Stable tests due to the [Smart Assertion Query Mechanism](https://devexpress.github.io/testcafe/documentation/test-api/assertions/#smart-assertion-query-mechanism) | &#10003; | &#10003; |
+| Tests run fast due to intelligent [Automatic Waiting Mechanism](https://devexpress.github.io/testcafe/documentation/test-api/waiting-for-page-elements-to-appear.html) and [Concurrent Test Execution](https://devexpress.github.io/testcafe/documentation/using-testcafe/common-concepts/concurrent-test-execution.html) | &#10003; | &#10003; |
+| Custom reporter plugins | &#10003; | &#10003; |
+| Use third-party Node.js modules in test scripts | &#10003; | &#10003; |
+| Integration with popular CI systems | &#10003; | &nbsp;&#10003;\* |
+| Free and open-source | &#10003; | &nbsp; |
+| [Visual Test Recorder](https://docs.devexpress.com/TestCafeStudio/400165/guides/record-tests?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff) | &nbsp; | &#10003; |
+| [Interactive Test Editor](https://docs.devexpress.com/TestCafeStudio/400190/user-interface/test-editor?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff) | &nbsp; | &#10003; |
+| [Automatic Selector Generation](https://docs.devexpress.com/TestCafeStudio/400407/guides/record-tests/element-selectors#auto-generated-element-selectors?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff) | &nbsp; | &#10003; |
+| [Run Configuration Manager](https://docs.devexpress.com/TestCafeStudio/400189/user-interface/run-configurations-dialog?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff) | &nbsp; | &#10003; |
+| [IDE-like GUI](https://docs.devexpress.com/TestCafeStudio/400181/user-interface/code-editor?utm_source=github.com&utm_medium=referral&utm_campaign=tc-gh-diff) | &nbsp; | &#10003; |
 
-* [**TestCafe**](https://testcafe.devexpress.com/)<br/>
-  *first released in 2013, commercial web application*
-  * Visual Test Recorder and web GUI to create, edit and run tests.
-  * You can record tests or edit them as JavaScript code.
+\* You can use open-source TestCafe to run TestCafe Studio tests in CI systems.
 
-* [**TestCafe**](https://devexpress.github.io/testcafe) - you are here<br/>
-  *first released in 2016, free and open-source node.js application*
-  * You can write tests in the latest JavaScript or TypeScript.
-  * Clearer and more flexible [API](https://devexpress.github.io/testcafe/documentation/test-api/) supports ES6 and [PageModel pattern](https://devexpress.github.io/testcafe/documentation/recipes/using-page-model.html).
-  * More stable tests due to the [Smart Assertion Query Mechanism](https://devexpress.github.io/testcafe/documentation/test-api/assertions/#smart-assertion-query-mechanism).
-  * Tests run faster due to improved [Automatic Waiting Mechanism](https://devexpress.github.io/testcafe/documentation/test-api/waiting-for-page-elements-to-appear.html) and [Concurrent Test Execution](https://devexpress.github.io/testcafe/documentation/using-testcafe/common-concepts/concurrent-test-execution.html).
-  * Easy integration: it is a node.js solution with CLI and reporters for popular CI systems.
-  * You can extend it with [plugins](#plugins) and other Node.js modules.
+## Badge
 
-* [**TestCafe Studio**](https://testcafe-studio.devexpress.com/)<br/>
-  *first released in 2018, commercial desktop application*
-  * Based on the open-source TestCafe, and supports its major features.
-  * You can record tests or edit them as JavaScript or TypeScript code.
-  * New [Visual Test Recorder](https://testcafe-studio.devexpress.com/documentation/guides/record-tests/) and [IDE-like GUI](https://testcafe-studio.devexpress.com/documentation/guides/write-test-code.html) to record, edit, run and debug tests.
-  * Currently available as a free preview version. The release version will replace the 2013 version of TestCafe.
+Show everyone you are using TestCafe: ![Tested with TestCafe](https://img.shields.io/badge/tested%20with-TestCafe-2fa4cf.svg)
+
+To display this badge, add the following code to your repository readme:
+
+```html
+<a href="https://github.com/DevExpress/testcafe">
+    <img alt="Tested with TestCafe" src="https://img.shields.io/badge/tested%20with-TestCafe-2fa4cf.svg">
+</a>
+```
 
 ## Thanks to BrowserStack
 

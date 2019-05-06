@@ -5,7 +5,8 @@ const hostname            = isTravisEnvironment ? os.hostname() : '127.0.0.1';
 
 const browserProviderNames = {
     sauceLabs:    'sauceLabs',
-    browserstack: 'browserstack'
+    browserstack: 'browserstack',
+    remote:       'remote'
 };
 
 const testingEnvironmentNames = {
@@ -14,7 +15,9 @@ const testingEnvironmentNames = {
     localBrowsersIE:             'local-browsers-ie',
     localBrowsersChromeFirefox:  'local-browsers-chrome-firefox',
     localBrowsers:               'local-browsers',
-    localHeadlessBrowsers:       'local-headless-browsers',
+    localHeadlessChrome:         'local-headless-chrome',
+    localHeadlessFirefox:        'local-headless-firefox',
+    remote:                      'remote',
     oldBrowsers:                 'old-browsers',
     legacy:                      'legacy'
 };
@@ -33,28 +36,16 @@ testingEnvironments[testingEnvironmentNames.osXDesktopAndMSEdgeBrowsers] = {
 
     browsers: [
         {
-            os:        'OS X',
-            osVersion: 'HIgh Sierra',
-            name:      'safari',
-            alias:     'safari'
+            browserName: 'browserstack:safari@11.1:OS X High Sierra',
+            alias:       'safari'
         },
         {
-            os:        'OS X',
-            osVersion: 'High Sierra',
-            name:      'chrome',
-            alias:     'chrome-osx'
+            browserName: 'browserstack:chrome@71:OS X High Sierra',
+            alias:       'chrome-osx'
         },
         {
-            os:        'OS X',
-            osVersion: 'High Sierra',
-            name:      'firefox',
-            alias:     'firefox-osx'
-        },
-        {
-            os:        'Windows',
-            osVersion: '10',
-            name:      'edge',
-            alias:     'edge',
+            browserName: 'browserstack:firefox@64:OS X High Sierra',
+            alias:       'firefox-osx'
         }
     ]
 };
@@ -71,28 +62,12 @@ testingEnvironments[testingEnvironmentNames.mobileBrowsers] = {
 
     browsers: [
         {
-            realMobile: true,
-            os:         'android',
-            osVersion:  '7.1',
-            device:     'Google Pixel',
-            name:       'Android',
-            alias:      'android'
+            browserName: 'browserstack:iPad Pro 12.9 2017@11',
+            alias:       'ipad'
         },
         {
-            realMobile: true,
-            os:         'ios',
-            osVersion:  '11.2',
-            device:     'iPad Pro',
-            name:       'Mobile Safari',
-            alias:      'ipad'
-        },
-        {
-            realMobile: true,
-            os:         'ios',
-            osVersion:  '10.3',
-            device:     'iPhone 7 Plus',
-            name:       'Mobile Safari',
-            alias:      'iphone'
+            browserName: 'browserstack:iPhone 7 Plus@10',
+            alias:       'iphone'
         }
     ]
 };
@@ -123,6 +98,8 @@ testingEnvironments[testingEnvironmentNames.localBrowsers] = {
 testingEnvironments[testingEnvironmentNames.localBrowsersIE] = {
     isLocalBrowsers: true,
 
+    retryTestPages: true,
+
     browsers: [
         {
             platform:    'Windows 10',
@@ -134,8 +111,7 @@ testingEnvironments[testingEnvironmentNames.localBrowsersIE] = {
 };
 
 testingEnvironments[testingEnvironmentNames.localBrowsersChromeFirefox] = {
-    isLocalBrowsers:    true,
-    isHeadlessBrowsers: true,
+    isLocalBrowsers: true,
 
     browsers: [
         {
@@ -151,8 +127,11 @@ testingEnvironments[testingEnvironmentNames.localBrowsersChromeFirefox] = {
     ]
 };
 
-testingEnvironments[testingEnvironmentNames.localHeadlessBrowsers] = {
-    isLocalBrowsers: true,
+testingEnvironments[testingEnvironmentNames.localHeadlessChrome] = {
+    isLocalBrowsers:    true,
+    isHeadlessBrowsers: true,
+
+    retryTestPages: true,
 
     browsers: [
         {
@@ -160,13 +139,37 @@ testingEnvironments[testingEnvironmentNames.localHeadlessBrowsers] = {
             browserName: 'chrome:headless --no-sandbox',
             userAgent:   'headlesschrome',
             alias:       'chrome'
-        },
+        }
+    ]
+};
+
+testingEnvironments[testingEnvironmentNames.localHeadlessFirefox] = {
+    isLocalBrowsers:    true,
+    isHeadlessBrowsers: true,
+
+    retryTestPages: true,
+
+    browsers: [
         {
             platform:    'Windows 10',
             browserName: 'firefox:headless:disableMultiprocessing=true',
             alias:       'firefox'
         }
     ]
+};
+
+testingEnvironments[testingEnvironmentNames.remote] = {
+    remote: true,
+
+    browsers: [{
+        get qrCode () {
+            return !!process.env.QR_CODE;
+        },
+
+        get alias () {
+            return process.env.BROWSER_ALIAS || 'chrome';
+        }
+    }]
 };
 
 testingEnvironments[testingEnvironmentNames.oldBrowsers] = {
@@ -197,19 +200,15 @@ testingEnvironments[testingEnvironmentNames.oldBrowsers] = {
 };
 
 testingEnvironments[testingEnvironmentNames.legacy] = {
-    isLocalBrowsers: true,
+    isLocalBrowsers:    true,
+    isHeadlessBrowsers: true,
 
     browsers: [
         {
             platform:    'Windows 10',
-            browserName: 'chrome',
+            browserName: 'chrome:headless --no-sandbox',
+            userAgent:   'headlesschrome',
             alias:       'chrome'
-        },
-        {
-            platform:    'Windows 10',
-            browserName: 'ie',
-            version:     '11.0',
-            alias:       'ie'
         }
     ]
 };
@@ -232,6 +231,10 @@ module.exports = {
         return this.currentEnvironment.isLocalBrowsers;
     },
 
+    get useHeadlessBrowsers () {
+        return this.currentEnvironment.isHeadlessBrowsers;
+    },
+
     get devMode () {
         return !!process.env.DEV_MODE;
     },
@@ -248,8 +251,8 @@ module.exports = {
 
     testCafe: {
         hostname: hostname,
-        port1:    2000,
-        port2:    2001
+        port1:    9000,
+        port2:    9001
     },
 
     site: {
@@ -264,7 +267,10 @@ module.exports = {
         }
     },
 
-    browserstackConnectorServicePort: 4000,
+    browserstackConnectorServicePort: 9200,
 
-    browsers: []
+    browsers: [],
+
+    testScreenshotsDir: '___test-screenshots___',
+    testVideosDir:      '___test-videos___'
 };

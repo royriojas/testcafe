@@ -8,7 +8,7 @@ const RAW_API_JS_EXPRESSION_TYPE = 'js-expr';
 
 export function isCommandRejectableByPageError (command) {
     return !isObservationCommand(command) && !isBrowserManipulationCommand(command) && !isServiceCommand(command) ||
-           isRejectableBrowserManipulationCommand(command)
+           isResizeWindowCommand(command)
            && !isWindowSwitchingCommand(command);
 }
 
@@ -20,7 +20,8 @@ function isClientFunctionCommand (command) {
 function isObservationCommand (command) {
     return isClientFunctionCommand(command) ||
            command.type === TYPE.wait ||
-           command.type === TYPE.assertion;
+           command.type === TYPE.assertion ||
+           command.type === TYPE.executeExpression;
 }
 
 function isWindowSwitchingCommand (command) {
@@ -37,24 +38,18 @@ export function isScreenshotCommand (command) {
            command.type === TYPE.takeScreenshotOnFail;
 }
 
-export function isBrowserManipulationCommand (command) {
-    return command.type === TYPE.takeScreenshot ||
-           command.type === TYPE.takeElementScreenshot ||
-           command.type === TYPE.takeScreenshotOnFail ||
-           command.type === TYPE.resizeWindow ||
+export function isResizeWindowCommand (command) {
+    return command.type === TYPE.resizeWindow ||
            command.type === TYPE.resizeWindowToFitDevice ||
            command.type === TYPE.maximizeWindow;
 }
 
-function isRejectableBrowserManipulationCommand (command) {
-    return command.type === TYPE.resizeWindow ||
-            command.type === TYPE.resizeWindowToFitDevice ||
-            command.type === TYPE.maximizeWindow;
+export function isBrowserManipulationCommand (command) {
+    return isScreenshotCommand(command) || isResizeWindowCommand(command);
 }
 
 export function isServiceCommand (command) {
     return command.type === TYPE.testDone ||
-           command.type === TYPE.takeScreenshotOnFail ||
            command.type === TYPE.showAssertionRetriesStatus ||
            command.type === TYPE.hideAssertionRetriesStatus ||
            command.type === TYPE.setBreakpoint ||
@@ -76,4 +71,13 @@ export function isExecutableInTopWindowOnly (command) {
 export function isJSExpression (val) {
     return val !== null && typeof val === 'object' && val.type === RAW_API_JS_EXPRESSION_TYPE &&
            typeof val.value === 'string';
+}
+
+export function isExecutableOnClientCommand (command) {
+    return command.type !== TYPE.wait &&
+           command.type !== TYPE.setPageLoadTimeout &&
+           command.type !== TYPE.debug &&
+           command.type !== TYPE.useRole &&
+           command.type !== TYPE.assertion &&
+           command.type !== TYPE.executeExpression;
 }

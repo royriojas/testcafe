@@ -305,6 +305,85 @@ $(document).ready(function () {
 
     module('other functional tests');
 
+    asyncTest('scroll to already visible element', function () {
+        removeTestElements();
+
+        addContainer(1, 5000, 'body');
+
+        const target = addContainer(20, 10, 'body');
+
+        addContainer(1, 5000, 'body');
+
+        target.css({
+            backgroundColor: '#ff0000'
+        });
+
+        window.scrollTo(0, 5050);
+
+        const click = new ClickAutomation(target[0], {
+            offsetX: 10,
+            offsetY: 5
+        });
+
+        const windowY = styleUtils.getScrollTop(document);
+
+        setTimeout(function () {
+            click
+                .run()
+                .then(function () {
+                    equal(styleUtils.getScrollTop(document), windowY, 'scroll position should not change');
+                    startNext();
+                });
+        });
+    });
+
+    asyncTest('scroll to already visible but obscured element', function () {
+        removeTestElements();
+
+        addContainer(1, 5000, 'body');
+
+        const target = addContainer(20, 10, 'body');
+
+        addContainer(1, 5000, 'body');
+
+        const fixed = addContainer(1000, 1000, 'body');
+        let clicked = false;
+
+        target.css({
+            backgroundColor: '#ff0000'
+        }).bind('mousedown', function () {
+            clicked = true;
+        });
+
+        fixed.css({
+            backgroundColor: '#00ff00',
+            position:        'fixed',
+            top:             1,
+            left:            1,
+            right:           1,
+            height:          100
+        });
+
+        window.scrollTo(0, 5050);
+
+        const click = new ClickAutomation(target[0], {
+            offsetX: 10,
+            offsetY: 5
+        });
+
+        const windowY = styleUtils.getScrollTop(document);
+
+        setTimeout(function () {
+            click
+                .run()
+                .then(function () {
+                    notEqual(styleUtils.getScrollTop(document), windowY, 'scroll position should change');
+                    ok(clicked, 'click was raised');
+                    startNext();
+                });
+        }, 0);
+    });
+
     asyncTest('click on element in scrolled container', function () {
         let clicked = false;
 
@@ -581,6 +660,58 @@ $(document).ready(function () {
 
                 deepEqual(eventPoint, expectedPoint, 'event point is correct');
                 startNext();
+            });
+    });
+
+    asyncTest('click on label with custom focus/selection handlers bound to checkbox', function () {
+        let changed = false;
+
+        const textarea = document.createElement('textarea');
+        const checkbox = document.createElement('input');
+        const label    = document.createElement('label');
+
+        document.body.appendChild(textarea);
+        document.body.appendChild(checkbox);
+        document.body.appendChild(label);
+
+        checkbox.id     = 'checkbox';
+        label.innerHTML = 'label';
+
+        textarea.className = TEST_ELEMENT_CLASS;
+        checkbox.className = TEST_ELEMENT_CLASS;
+        label.className    = TEST_ELEMENT_CLASS;
+
+        checkbox.setAttribute('type', 'checkbox');
+        label.setAttribute('for', checkbox.id);
+
+        checkbox.addEventListener('change', function () {
+            changed = !changed;
+        });
+
+        textarea.addEventListener('focus', function () {
+            textarea.setSelectionRange(1, 2);
+        });
+
+        textarea.value = '11';
+
+        textarea.focus();
+
+        const clickAutomation = new ClickAutomation(label, { });
+
+        clickAutomation
+            .run()
+            .then(function () {
+                ok(changed, 'change');
+                ok(checkbox.checked, 'checked');
+
+                return clickAutomation
+                    .run()
+                    .then(function () {
+                        notOk(changed, 'not change');
+                        notOk(checkbox.checked, 'not checked');
+
+                        startNext();
+                    });
             });
     });
 
@@ -944,6 +1075,32 @@ $(document).ready(function () {
                 .then(function () {
                     ok(raisedEvents.indexOf('touchstart') >= 0);
                     ok(raisedEvents.indexOf('touchend') >= 0);
+
+                    startNext();
+                });
+        });
+
+        asyncTest('click should not raise touchmove', function () {
+            const raisedEvents = [];
+
+            const touchEventHandler = function (ev) {
+                raisedEvents.push(ev.type);
+            };
+
+            const element = $el[0];
+
+            document.body.addEventListener('touchmove', touchEventHandler);
+            element.addEventListener('touchmove', touchEventHandler);
+
+            element.addEventListener('touchstart', touchEventHandler);
+            element.addEventListener('touchend', touchEventHandler);
+
+            const click = new ClickAutomation(element, new ClickOptions());
+
+            click
+                .run()
+                .then(function () {
+                    deepEqual(raisedEvents, ['touchstart', 'touchend']);
 
                     startNext();
                 });

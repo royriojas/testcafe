@@ -1,3 +1,5 @@
+if: NOT (commit_message =~ /^\[docs\]/ OR branch = 'new-docs')
+
 addons:
  chrome:  stable
  firefox: latest
@@ -12,16 +14,16 @@ matrix:
     env: GULP_TASK="test-server"
   - node_js: "stable"
     env: GULP_TASK="test-server"
-  - node_js: "stable"
+  - node_js: "10"
     env: GULP_TASK="test-client-travis"
-  - node_js: "stable"
+  - node_js: "10"
     env: GULP_TASK="test-client-travis-mobile"
-  - node_js: "stable"
-    env: GULP_TASK="test-functional-travis-desktop-osx-and-ms-edge"
-  - node_js: "stable"
-    env: GULP_TASK="test-functional-travis-mobile"
-  - node_js: "stable"
-    env: GULP_TASK="test-functional-local-headless"
+  - node_js: "10"
+    env: GULP_TASK="test-functional-local-headless-chrome"
+  - node_js: "10"
+    env: GULP_TASK="test-functional-local-headless-firefox"
+  - node_js: "10"
+    env: GULP_TASK="test-functional-local-legacy"
  fast_finish: true
 
 cache:

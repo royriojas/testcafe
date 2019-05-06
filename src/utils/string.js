@@ -1,5 +1,4 @@
 import indentString from 'indent-string';
-import { repeat } from 'lodash';
 
 function rtrim (str) {
     return str.replace(/\s+$/, '');
@@ -75,8 +74,15 @@ export function splitQuotedText (str, splitChar, quotes = '"\'') {
     return parts;
 }
 
-export function replaceLeadingSpacesWithNbsp (str) {
-    return str.replace(/^ +/mg, match => {
-        return repeat('&nbsp;', match.length);
-    });
+export function getPluralSuffix (array) {
+    return array.length > 1 ? 's' : '';
 }
+
+export function getConcatenatedValuesString (array) {
+    return array.map(item => `"${item}"`).join(', ');
+}
+
+export function getToBeInPastTense (array) {
+    return array.length > 1 ? 'were' : 'was';
+}
+

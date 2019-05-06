@@ -68,14 +68,13 @@ export function getDeepActiveElement (currentDocument) {
     if (!activeElement || !domUtils.isDomElement(activeElement))
         activeElement = doc.body;
 
-    if (activeElement && domUtils.isIframeElement(activeElement) && activeElement.contentDocument) {
+    if (activeElement && domUtils.isIframeElement(activeElement) &&
+        nativeMethods.contentDocumentGetter.call(activeElement)) {
         try {
-            activeElementInIframe = getDeepActiveElement(activeElement.contentDocument);
+            activeElementInIframe = getDeepActiveElement(nativeMethods.contentDocumentGetter.call(activeElement));
         }
-        /*eslint-disable no-empty */
-        catch (e) {
+        catch (e) { // eslint-disable-line no-empty
         }
-        /*eslint-enable no-empty */
     }
 
     return activeElementInIframe || activeElement;
@@ -140,7 +139,7 @@ function correctFocusableElement (elements, element, skipRadioGroups) {
     return checkedRadioButtonElementWithSameName || element;
 }
 
-function getNextFocusableElement (element, reverse, skipRadioGroups) {
+export function getNextFocusableElement (element, reverse, skipRadioGroups) {
     const offset     = reverse ? -1 : 1;
     let allFocusable = domUtils.getFocusableElements(findDocument(element), true);
 

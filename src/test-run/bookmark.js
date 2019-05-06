@@ -1,5 +1,6 @@
 import TEST_RUN_PHASE from '../test-run/phase';
-import ERR_TYPE from '../errors/test-run/type';
+import { TEST_RUN_ERRORS } from '../errors/types';
+import { SPECIAL_BLANK_PAGE } from 'testcafe-hammerhead';
 
 import {
     SwitchToMainWindowCommand,
@@ -15,13 +16,12 @@ import {
     CurrentIframeIsNotLoadedError
 } from '../errors/test-run';
 
-
 export default class TestRunBookmark {
     constructor (testRun, role) {
         this.testRun = testRun;
         this.role    = role;
 
-        this.url             = 'about:blank';
+        this.url             = SPECIAL_BLANK_PAGE;
         this.dialogHandler   = testRun.activeDialogHandler;
         this.iframeSelector  = testRun.activeIframeSelector;
         this.speed           = testRun.speed;
@@ -73,10 +73,10 @@ export default class TestRunBookmark {
                 await this.testRun.executeCommand(switchWorkingFrameCommand);
             }
             catch (err) {
-                if (err.type === ERR_TYPE.actionElementNotFoundError)
+                if (err.code === TEST_RUN_ERRORS.actionElementNotFoundError)
                     throw new CurrentIframeNotFoundError();
 
-                if (err.type === ERR_TYPE.actionIframeIsNotLoadedError)
+                if (err.code === TEST_RUN_ERRORS.actionIframeIsNotLoadedError)
                     throw new CurrentIframeIsNotLoadedError();
 
                 throw err;
@@ -84,8 +84,8 @@ export default class TestRunBookmark {
         }
     }
 
-    async _restorePage (url, stateSnapshot) {
-        const navigateCommand = new NavigateToCommand({ url, stateSnapshot });
+    async _restorePage (url, stateSnapshot, forceReload) {
+        const navigateCommand = new NavigateToCommand({ url, stateSnapshot, forceReload });
 
         await this.testRun.executeCommand(navigateCommand);
     }
@@ -105,9 +105,9 @@ export default class TestRunBookmark {
             await this._restoreDialogHandler();
 
             const preserveUrl = this.role.opts.preserveUrl;
-            const url = preserveUrl ? this.role.url : this.url;
+            const url         = preserveUrl ? this.role.url : this.url;
 
-            await this._restorePage(url, JSON.stringify(stateSnapshot));
+            await this._restorePage(url, JSON.stringify(stateSnapshot), true);
 
             if (!preserveUrl)
                 await this._restoreWorkingFrame();

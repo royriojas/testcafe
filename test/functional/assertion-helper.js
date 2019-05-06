@@ -1,14 +1,15 @@
-const expect         = require('chai').expect;
-const path           = require('path');
-const fs             = require('fs');
-const Promise        = require('pinkie');
-const { isFunction } = require('lodash');
-const del            = require('del');
-const pngjs          = require('pngjs');
-const config         = require('./config.js');
+const expect          = require('chai').expect;
+const globby          = require('globby');
+const path            = require('path');
+const fs              = require('fs');
+const Promise         = require('pinkie');
+const { isFunction }  = require('lodash');
+const del             = require('del');
+const config          = require('./config.js');
+const { readPngFile } = require('../../lib/utils/promisified-functions');
 
 
-const SCREENSHOTS_PATH               = '___test-screenshots___';
+const SCREENSHOTS_PATH               = config.testScreenshotsDir;
 const THUMBNAILS_DIR_NAME            = 'thumbnails';
 const ERRORS_DIR_NAME                = 'errors';
 const TASK_DIR_RE                    = /\d{4,4}-\d{2,2}-\d{2,2}_\d{2,2}-\d{2,2}-\d{2,2}/;
@@ -19,6 +20,8 @@ const RUN_DIR_NAME_RE                = /run-\d+/;
 const GREEN_PIXEL                    = [0, 255, 0, 255];
 const RED_PIXEL                      = [255, 0, 0, 255];
 
+const VIDEOS_PATH      = config.testVideosDir;
+const VIDEO_FILES_GLOB = path.join(VIDEOS_PATH, '**', '*');
 
 function hasPixel (png, pixel, x, y) {
     const baseIndex = (png.width * y + x) * 4;
@@ -49,20 +52,8 @@ function getScreenshotFilesCount (dir, customPath) {
     return results;
 }
 
-function readPng (filePath) {
-    return new Promise(function (resolve) {
-        const png = new pngjs.PNG();
-
-        png.once('parsed', function () {
-            resolve(png);
-        });
-
-        fs.createReadStream(filePath).pipe(png);
-    });
-}
-
 function checkScreenshotFileCropped (filePath) {
-    return readPng(filePath)
+    return readPngFile(filePath)
         .then(function (png) {
             const width  = png.width;
             const height = png.height;
@@ -76,7 +67,7 @@ function checkScreenshotFileCropped (filePath) {
 }
 
 function checkScreenshotFileIsNotWhite (filePath) {
-    return readPng(filePath)
+    return readPngFile(filePath)
         .then(function (png) {
             return png.data.indexOf(Buffer.from(RED_PIXEL)) > -1 && png.data.indexOf(Buffer.from(GREEN_PIXEL)) > -1;
         });
@@ -114,9 +105,7 @@ function checkTestDir (testDirPath, forError, expectedSubDirCount, expectedScree
     });
 }
 
-function checkScreenshotImages (forError, customPath, predicate) {
-    const expectedScreenshotsCount = config.browsers.length;
-
+function checkScreenshotImages (forError, customPath, predicate, expectedScreenshotsCount = config.browsers.length) {
     if (!isDirExists(SCREENSHOTS_PATH))
         return false;
 
@@ -311,11 +300,28 @@ exports.isScreenshotsEqual = function (customPath, referenceImagePathGetter) {
     });
 };
 
-exports.removeScreenshotDir = function () {
-    if (isDirExists(SCREENSHOTS_PATH))
-        return del(SCREENSHOTS_PATH);
+exports.checkScreenshotsDimensions = function (dimensions, screenshotCount) {
+    return checkScreenshotImages(false, '', function (screenshotFilePath) {
+        return readPngFile(screenshotFilePath)
+            .then(png => {
+                return dimensions.width === png.width && dimensions.height === png.height;
+            });
+    }, screenshotCount);
+};
+
+function removeDir (dirPath) {
+    if (isDirExists(dirPath))
+        return del(dirPath);
 
     return Promise.resolve();
+}
+
+exports.removeScreenshotDir = () => removeDir(SCREENSHOTS_PATH);
+
+exports.removeVideosDir = () => removeDir(VIDEOS_PATH);
+
+exports.getVideoFilesList = () => {
+    return globby(VIDEO_FILES_GLOB, { nodir: true });
 };
 
 exports.SCREENSHOTS_PATH = SCREENSHOTS_PATH;

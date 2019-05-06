@@ -1,16 +1,17 @@
-const SlConnector          = require('saucelabs-connector');
-const BsConnector          = require('browserstack-connector');
-const Promise              = require('pinkie');
-const caller               = require('caller');
-const path                 = require('path');
-const promisifyEvent       = require('promisify-event');
-const createTestCafe       = require('../../lib');
-const browserProviderPool  = require('../../lib/browser/provider/pool');
-const BrowserConnection    = require('../../lib/browser/connection');
-const config               = require('./config.js');
-const site                 = require('./site');
-const getTestError         = require('./get-test-error.js');
-const { createTestStream } = require('./utils/stream');
+const path                       = require('path');
+const Promise                    = require('pinkie');
+const SlConnector                = require('saucelabs-connector');
+const BsConnector                = require('browserstack-connector');
+const caller                     = require('caller');
+const promisifyEvent             = require('promisify-event');
+const createTestCafe             = require('../../lib');
+const browserProviderPool        = require('../../lib/browser/provider/pool');
+const BrowserConnection          = require('../../lib/browser/connection');
+const config                     = require('./config.js');
+const site                       = require('./site');
+const RemoteConnector            = require('./remote-connector');
+const getTestError               = require('./get-test-error.js');
+const { createSimpleTestStream } = require('./utils/stream');
 
 let testCafe     = null;
 let browsersInfo = null;
@@ -35,11 +36,19 @@ config.browsers = environment.browsers;
 
 const REQUESTED_MACHINES_COUNT = environment.browsers.length;
 
+const REMOTE_CONNECTORS_MAP = {
+    [config.browserProviderNames.browserstack]: BsConnector,
+    [config.browserProviderNames.sauceLabs]:    SlConnector,
+    [config.browserProviderNames.remote]:       RemoteConnector
+};
+
+const USE_PROVIDER_POOL = config.useLocalBrowsers || isBrowserStack;
+
 function getBrowserInfo (settings) {
     return Promise
         .resolve()
         .then(() => {
-            if (!config.useLocalBrowsers)
+            if (!USE_PROVIDER_POOL)
                 return testCafe.createBrowserConnection();
 
             return browserProviderPool
@@ -63,7 +72,7 @@ function initBrowsersInfo () {
 }
 
 function openRemoteBrowsers () {
-    const Connector = isBrowserStack ? BsConnector : SlConnector;
+    const Connector = REMOTE_CONNECTORS_MAP[browserProvider];
 
     connector = new Connector(environment[browserProvider].username, environment[browserProvider].accessKey,
         { servicePort: config.browserstackConnectorServicePort });
@@ -93,13 +102,18 @@ function openRemoteBrowsers () {
         });
 }
 
-function openLocalBrowsers () {
-    return Promise.all(browsersInfo.map(browserInfo => {
-        if (browserInfo.connection.opened)
-            return Promise.resolve();
+function waitUtilBrowserConnectionOpened (connection) {
+    const connectedPromise = connection.opened ? Promise.resolve() : promisifyEvent(connection, 'opened');
 
-        return promisifyEvent(browserInfo.connection, 'opened');
-    }));
+    return connectedPromise
+        .then(() => {
+            // eslint-disable-next-line no-console
+            console.log(`Connected ${connection.userAgent}`);
+        });
+}
+
+function waitUntilBrowsersConnected () {
+    return Promise.all(browsersInfo.map(browserInfo => waitUtilBrowserConnectionOpened(browserInfo.connection)));
 }
 
 function closeRemoteBrowsers () {
@@ -141,44 +155,51 @@ before(function () {
 
             site.create(config.site.ports, config.site.viewsPath);
 
-            if (!config.useLocalBrowsers) {
-                // NOTE: we need to disable this particular timeout for preventing mocha timeout
-                // error while establishing connection to Sauce Labs. If connection wouldn't be
-                // established after a specified number of attempts, an error will be thrown.
+            // NOTE: we need to disable this particular timeout for preventing mocha timeout
+            // error while establishing connection to Sauce Labs. If connection wouldn't be
+            // established after a specified number of attempts, an error will be thrown.
+            if (isBrowserStack || !USE_PROVIDER_POOL)
                 mocha.timeout(0);
 
-                return openRemoteBrowsers();
-            }
+            if (USE_PROVIDER_POOL)
+                return Promise.resolve();
 
-            return openLocalBrowsers();
+            return openRemoteBrowsers();
+        })
+        .then(() => {
+            return waitUntilBrowsersConnected();
         })
         .then(() => {
             global.testReport = null;
             global.testCafe   = testCafe;
 
             global.runTests = (fixture, testName, opts) => {
-                const stream                = createTestStream();
-                const runner                = testCafe.createRunner();
-                const fixturePath           = typeof fixture !== 'string' || path.isAbsolute(fixture) ? fixture : path.join(path.dirname(caller()), fixture);
-                const skipJsErrors          = opts && opts.skipJsErrors;
-                const disablePageReloads    = opts && opts.disablePageReloads;
-                const quarantineMode        = opts && opts.quarantineMode;
-                const selectorTimeout       = opts && opts.selectorTimeout || FUNCTIONAL_TESTS_SELECTOR_TIMEOUT;
-                const assertionTimeout      = opts && opts.assertionTimeout || FUNCTIONAL_TESTS_ASSERTION_TIMEOUT;
-                const pageLoadTimeout       = opts && opts.pageLoadTimeout || FUNCTIONAL_TESTS_PAGE_LOAD_TIMEOUT;
-                const onlyOption            = opts && opts.only;
-                const skipOption            = opts && opts.skip;
-                const screenshotPath        = opts && opts.setScreenshotPath ? '___test-screenshots___' : '';
-                const screenshotPathPattern = opts && opts.screenshotPathPattern;
-                const screenshotsOnFails    = opts && opts.screenshotsOnFails;
-                const speed                 = opts && opts.speed;
-                const appCommand            = opts && opts.appCommand;
-                const appInitDelay          = opts && opts.appInitDelay;
-                const externalProxyHost     = opts && opts.useProxy;
-                const proxyBypass           = opts && opts.proxyBypass;
-                const customReporters       = opts && opts.reporters;
-                const skipUncaughtErrors    = opts && opts.skipUncaughtErrors;
-                const stopOnFirstFail       = opts && opts.stopOnFirstFail;
+                const stream                      = createSimpleTestStream();
+                const runner                      = testCafe.createRunner();
+                const fixturePath                 = typeof fixture !== 'string' ||
+                                                    path.isAbsolute(fixture) ? fixture : path.join(path.dirname(caller()), fixture);
+                const skipJsErrors                = opts && opts.skipJsErrors;
+                const disablePageReloads          = opts && opts.disablePageReloads;
+                const quarantineMode              = opts && opts.quarantineMode;
+                const selectorTimeout             = opts && opts.selectorTimeout || FUNCTIONAL_TESTS_SELECTOR_TIMEOUT;
+                const assertionTimeout            = opts && opts.assertionTimeout || FUNCTIONAL_TESTS_ASSERTION_TIMEOUT;
+                const pageLoadTimeout             = opts && opts.pageLoadTimeout || FUNCTIONAL_TESTS_PAGE_LOAD_TIMEOUT;
+                const onlyOption                  = opts && opts.only;
+                const skipOption                  = opts && opts.skip;
+                const screenshotPath              = opts && opts.setScreenshotPath ? config.testScreenshotsDir : '';
+                const screenshotPathPattern       = opts && opts.screenshotPathPattern;
+                const screenshotsOnFails          = opts && opts.screenshotsOnFails;
+                const videoPath                   = opts && opts.setVideoPath ? config.testVideosDir : '';
+                const videoOptions                = opts && opts.videoOptions;
+                const videoEncodingOptions        = opts && opts.videoEncodingOptions;
+                const speed                       = opts && opts.speed;
+                const appCommand                  = opts && opts.appCommand;
+                const appInitDelay                = opts && opts.appInitDelay;
+                const proxy                       = opts && opts.useProxy;
+                const proxyBypass                 = opts && opts.proxyBypass;
+                const customReporters             = opts && opts.reporter;
+                const skipUncaughtErrors          = opts && opts.skipUncaughtErrors;
+                const stopOnFirstFail             = opts && opts.stopOnFirstFail;
 
                 const actualBrowsers = browsersInfo.filter(browserInfo => {
                     const { alias, userAgent } = browserInfo.settings;
@@ -209,18 +230,20 @@ before(function () {
                 };
 
                 if (customReporters)
-                    customReporters.forEach(r => runner.reporter(r.reporter, r.outStream));
+                    runner.reporter(customReporters);
                 else
                     runner.reporter('json', stream);
 
                 return runner
-                    .useProxy(externalProxyHost, proxyBypass)
+                    .useProxy(proxy, proxyBypass)
                     .browsers(connections)
+
                     .filter(test => {
                         return testName ? test === testName : true;
                     })
                     .src(fixturePath)
                     .screenshots(screenshotPath, screenshotsOnFails, screenshotPathPattern)
+                    .video(videoPath, videoOptions, videoEncodingOptions)
                     .startApp(appCommand, appInitDelay)
                     .run({
                         skipJsErrors,
@@ -265,7 +288,7 @@ after(function () {
     delete global.runTests;
     delete global.testReport;
 
-    if (!config.useLocalBrowsers)
+    if (!USE_PROVIDER_POOL)
         return closeRemoteBrowsers();
 
     return closeLocalBrowsers();

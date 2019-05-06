@@ -1,57 +1,56 @@
 import Promise from 'pinkie';
-import sourceMapSupport from 'source-map-support';
-import { readSync as read } from 'read-file-relative';
-import { Proxy } from 'testcafe-hammerhead';
-import { CLIENT_RUNNER_SCRIPT as LEGACY_RUNNER_SCRIPT } from 'testcafe-legacy-api';
-import BrowserConnectionGateway from './browser/connection/gateway';
-import BrowserConnection from './browser/connection';
-import browserProviderPool from './browser/provider/pool';
-import Runner from './runner';
-import { registerErrorHandlers } from './utils/handle-errors';
+import { GeneralError } from './errors/runtime';
+import { RUNTIME_ERRORS } from './errors/types';
 
-// Const
-const UI_STYLE  = read('./client/ui/styles.css');
-const UI_SPRITE = read('./client/ui/sprite.png', true);
-const FAVICON   = read('./client/ui/favicon.ico', true);
+const lazyRequire              = require('import-lazy')(require);
+const sourceMapSupport         = lazyRequire('source-map-support');
+const hammerhead               = lazyRequire('testcafe-hammerhead');
+const loadAssets               = lazyRequire('./load-assets');
+const errorHandlers            = lazyRequire('./utils/handle-errors');
+const BrowserConnectionGateway = lazyRequire('./browser/connection/gateway');
+const BrowserConnection        = lazyRequire('./browser/connection');
+const browserProviderPool      = lazyRequire('./browser/provider/pool');
+const Runner                   = lazyRequire('./runner');
+const LiveModeRunner           = lazyRequire('./live/test-runner');
+
+// NOTE: CoffeeScript can't be loaded lazily, because it will break stack traces
+require('coffeescript');
 
 export default class TestCafe {
-    constructor (hostname, port1, port2, options = {}) {
+    constructor (configuration) {
         this._setupSourceMapsSupport();
+        errorHandlers.registerErrorHandlers();
 
-        registerErrorHandlers();
-
-        if (options.retryTestPages)
-            options.staticContentCaching = { maxAge: 3600, mustRevalidate: false };
+        const { hostname, port1, port2, options } = configuration.startOptions;
 
         this.closed                   = false;
-        this.proxy                    = new Proxy(hostname, port1, port2, options);
-        this.browserConnectionGateway = new BrowserConnectionGateway(this.proxy, { retryTestPages: options.retryTestPages });
+        this.proxy                    = new hammerhead.Proxy(hostname, port1, port2, options);
+        this.browserConnectionGateway = new BrowserConnectionGateway(this.proxy, { retryTestPages: configuration.getOption('retryTestPages') });
         this.runners                  = [];
-        this.retryTestPages           = options.retryTestPages;
+        this.configuration            = configuration;
 
         this._registerAssets(options.developmentMode);
     }
 
     _registerAssets (developmentMode) {
-        const scriptNameSuffix = developmentMode ? 'js' : 'min.js';
-        const coreScript       = read(`./client/core/index.${scriptNameSuffix}`);
-        const driverScript     = read(`./client/driver/index.${scriptNameSuffix}`);
-        const uiScript         = read(`./client/ui/index.${scriptNameSuffix}`);
-        const automationScript = read(`./client/automation/index.${scriptNameSuffix}`);
+        const { favIcon, coreScript, driverScript, uiScript,
+            uiStyle, uiSprite, automationScript, legacyRunnerScript } = loadAssets(developmentMode);
 
         this.proxy.GET('/testcafe-core.js', { content: coreScript, contentType: 'application/x-javascript' });
         this.proxy.GET('/testcafe-driver.js', { content: driverScript, contentType: 'application/x-javascript' });
+
         this.proxy.GET('/testcafe-legacy-runner.js', {
-            content:     LEGACY_RUNNER_SCRIPT,
+            content:     legacyRunnerScript,
             contentType: 'application/x-javascript'
         });
+
         this.proxy.GET('/testcafe-automation.js', { content: automationScript, contentType: 'application/x-javascript' });
         this.proxy.GET('/testcafe-ui.js', { content: uiScript, contentType: 'application/x-javascript' });
-        this.proxy.GET('/testcafe-ui-sprite.png', { content: UI_SPRITE, contentType: 'image/png' });
-        this.proxy.GET('/favicon.ico', { content: FAVICON, contentType: 'image/x-icon' });
+        this.proxy.GET('/testcafe-ui-sprite.png', { content: uiSprite, contentType: 'image/png' });
+        this.proxy.GET('/favicon.ico', { content: favIcon, contentType: 'image/x-icon' });
 
         this.proxy.GET('/testcafe-ui-styles.css', {
-            content:              UI_STYLE,
+            content:              uiStyle,
             contentType:          'text/css',
             isShadowUIStylesheet: true
         });
@@ -65,6 +64,15 @@ export default class TestCafe {
         });
     }
 
+    _createRunner (isLiveMode) {
+        const Ctor      = isLiveMode ? LiveModeRunner : Runner;
+        const newRunner = new Ctor(this.proxy, this.browserConnectionGateway, this.configuration.clone());
+
+        this.runners.push(newRunner);
+
+        return newRunner;
+    }
+
     // API
     async createBrowserConnection () {
         const browserInfo = await browserProviderPool.getBrowserInfo('remote');
@@ -73,11 +81,14 @@ export default class TestCafe {
     }
 
     createRunner () {
-        const newRunner = new Runner(this.proxy, this.browserConnectionGateway, { retryTestPages: this.retryTestPages });
+        return this._createRunner(false);
+    }
 
-        this.runners.push(newRunner);
+    createLiveModeRunner () {
+        if (this.runners.some(runner => runner instanceof LiveModeRunner))
+            throw new GeneralError(RUNTIME_ERRORS.cannotCreateMultipleLiveModeRunners);
 
-        return newRunner;
+        return this._createRunner(true);
     }
 
     async close () {

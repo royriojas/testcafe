@@ -19,7 +19,7 @@ function assertStack (err, expected) {
         parsedStack.forEach(function (frame, idx) {
             const filename   = frame.fileName;
             const isInternal = frame.fileName.indexOf('internal/') === 0 ||
-                             frame.fileName.indexOf(sep) < 0;
+                               frame.fileName.indexOf(sep) < 0;
 
             // NOTE: assert that stack is clean from internals
             expect(isInternal).to.be.false;
@@ -37,8 +37,13 @@ function assertStack (err, expected) {
     }
 }
 
-function assertError (err, expected) {
-    expect(err.message).eql(expected.message);
+function assertError (err, expected, messageContainsStack) {
+    // NOTE: https://github.com/nodejs/node/issues/27388
+    if (messageContainsStack)
+        expect(err.message.indexOf(expected.message)).eql(0);
+    else
+        expect(err.message).eql(expected.message);
+
     expect(err.stack.indexOf(expected.message)).eql(0);
 
     assertStack(err, expected);

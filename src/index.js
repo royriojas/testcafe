@@ -1,12 +1,14 @@
 import Promise from 'pinkie';
-import TestCafe from './testcafe';
-import * as endpointUtils from 'endpoint-utils';
-import setupExitHook from 'async-exit-hook';
 import { GeneralError } from './errors/runtime';
-import MESSAGE from './errors/runtime/message';
+import { RUNTIME_ERRORS } from './errors/types';
 import embeddingUtils from './embedding-utils';
 import exportableLib from './api/exportable-lib';
+import Configuration from './configuration';
 
+const lazyRequire   = require('import-lazy')(require);
+const TestCafe      = lazyRequire('./testcafe');
+const endpointUtils = lazyRequire('endpoint-utils');
+const setupExitHook = lazyRequire('async-exit-hook');
 
 // Validations
 async function getValidHostname (hostname) {
@@ -14,7 +16,7 @@ async function getValidHostname (hostname) {
         const valid = await endpointUtils.isMyHostname(hostname);
 
         if (!valid)
-            throw new GeneralError(MESSAGE.invalidHostname, hostname);
+            throw new GeneralError(RUNTIME_ERRORS.invalidHostname, hostname);
     }
     else
         hostname = endpointUtils.getIPAddress();
@@ -27,7 +29,7 @@ async function getValidPort (port) {
         const isFree = await endpointUtils.isFreePort(port);
 
         if (!isFree)
-            throw new GeneralError(MESSAGE.portIsNotFree, port);
+            throw new GeneralError(RUNTIME_ERRORS.portIsNotFree, port);
     }
     else
         port = await endpointUtils.getFreePort();
@@ -37,17 +39,26 @@ async function getValidPort (port) {
 
 // API
 async function createTestCafe (hostname, port1, port2, sslOptions, developmentMode, retryTestPages) {
-    [hostname, port1, port2] = await Promise.all([
-        getValidHostname(hostname),
-        getValidPort(port1),
-        getValidPort(port2)
-    ]);
+    const configuration = new Configuration();
 
-    const testcafe = new TestCafe(hostname, port1, port2, {
+    await configuration.init({
+        hostname,
+        port1,
+        port2,
         ssl: sslOptions,
         developmentMode,
         retryTestPages
     });
+
+    [hostname, port1, port2] = await Promise.all([
+        getValidHostname(configuration.getOption('hostname')),
+        getValidPort(configuration.getOption('port1')),
+        getValidPort(configuration.getOption('port2'))
+    ]);
+
+    configuration.mergeOptions({ hostname, port1, port2 });
+
+    const testcafe = new TestCafe(configuration);
 
     setupExitHook(cb => testcafe.close().then(cb));
 
@@ -59,7 +70,7 @@ createTestCafe.embeddingUtils = embeddingUtils;
 
 // Common API
 Object.keys(exportableLib).forEach(key => {
-    createTestCafe[key] = exportableLib[key];
+    Object.defineProperty(createTestCafe, key, { get: () => exportableLib[key] });
 });
 
 export default createTestCafe;

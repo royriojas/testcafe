@@ -19,6 +19,7 @@ import {
 } from '../../test-run/commands/options';
 import AutomationSettings from './settings';
 import { getOffsetOptions } from './utils/offsets';
+import { getNextFocusableElement } from './playback/press/utils';
 import calculateSelectTextArguments from './playback/select/calculate-select-text-arguments';
 import ERROR_TYPES from './errors';
 import cursor from './cursor';
@@ -46,14 +47,14 @@ exports.AutomationSettings           = AutomationSettings;
 exports.getOffsetOptions             = getOffsetOptions;
 exports.calculateSelectTextArguments = calculateSelectTextArguments;
 exports.cursor                       = cursor;
+exports.getNextFocusableElement      = getNextFocusableElement;
 
 exports.get = require;
 
-hammerhead.nativeMethods.objectDefineProperty.call(window, window, '%testCafeAutomation%', {
-    configurable: true,
-    value:        exports
-});
+const nativeMethods    = hammerhead.nativeMethods;
+const evalIframeScript = hammerhead.EVENTS.evalIframeScript;
 
-/* eslint-disable no-undef */
-hammerhead.on(hammerhead.EVENTS.evalIframeScript, e => initTestCafeAutomation(e.iframe.contentWindow, true));
-/* eslint-enable no-undef */
+nativeMethods.objectDefineProperty(window, '%testCafeAutomation%', { configurable: true, value: exports });
+
+// eslint-disable-next-line no-undef
+hammerhead.on(evalIframeScript, e => initTestCafeAutomation(nativeMethods.contentWindowGetter.call(e.iframe), true));

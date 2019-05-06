@@ -14,6 +14,7 @@ This topic describes how to identify DOM elements and obtain information about t
 * [Define Action Targets](#define-action-targets)
 * [Define Assertion Actual Value](#define-assertion-actual-value)
 * [Selector Timeout](#selector-timeout)
+* [Debug Selectors](#debug-selectors)
 
 ## Check if an Element Exists
 
@@ -86,11 +87,11 @@ fixture `My fixture`
     .page `http://devexpress.github.io/testcafe/example/`;
 
 test('DOM Node Snapshot', async t => {
-    const sliderHandle        = Selector('#slider').child('span');
-    const sliderHandleSnaphot = await sliderHandle();
+    const sliderHandle         = Selector('#slider').child('span');
+    const sliderHandleSnapshot = await sliderHandle();
 
-    console.log(sliderHandleSnaphot.hasClass('ui-slider-handle'));    // => true
-    console.log(sliderHandleSnaphot.childElementCount);               // => 0
+    console.log(sliderHandleSnapshot.hasClass('ui-slider-handle'));    // => true
+    console.log(sliderHandleSnapshot.childElementCount);               // => 0
 });
 ```
 
@@ -161,9 +162,9 @@ test('Assertion with Selector', async t => {
     const developerNameInput = Selector('#developer-name');
 
     await t
-        .expect(developerNameInput.innerText).eql('')
+        .expect(developerNameInput.value).eql('')
         .typeText(developerNameInput, 'Peter')
-        .expect(developerNameInput.innerText).eql('Peter');
+        .expect(developerNameInput.value).eql('Peter');
 });
 ```
 
@@ -181,9 +182,20 @@ method if you use API or specify the [selector-timeout](../../../using-testcafe/
 if you run TestCafe from the command line.
 
 Within the selector timeout, the selector is executed over and over again, until it returns a
-DOM node or the timeout exceeds. If TestCafe cannot find the corresponding node in the DOM, the test fails. The test report shows a sequence of the selector's methods that were called during the test and highlights the failed method. This helps you understand what caused the fail.
-
-![Selector methods in reports](../../../../images/failed-selector-report.png)
+DOM node or the timeout exceeds. If TestCafe cannot find the corresponding node in the DOM, the test fails.
 
 > Note that you can require that the node returned by the selector is visible.
 To do this, use the [visibilityCheck](selector-options.md#optionsvisibilitycheck) option.
+
+## Debug Selectors
+
+TestCafe outputs information about failed selectors to test run reports.
+
+When you try to use a selector that does not match any DOM element, the test fails and an error is thrown.
+The error message indicates which selector has failed.
+
+An error can also occur when you call [selector's methods](functional-style-selectors.md) in a chain.
+These methods are applied to the selector one by one. TestCafe detects a method after which the selector no longer matches any DOM element.
+This method is highlighted in the error message.
+
+![Selector methods in a report](../../../../images/failed-selector-report.png)
