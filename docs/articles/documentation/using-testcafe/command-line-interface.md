@@ -57,6 +57,7 @@ testcafe [options] <browser-list-comma-separated> <file-or-glob ...>
   * [--dev](#--dev)
   * [--qr-code](#--qr-code)
   * [--sf, --stop-on-first-fail](#--sf---stop-on-first-fail)
+  * [--ts-config-path \<path\>](#--ts-config-path-path)
   * [--color](#--color)
   * [--no-color](#--no-color)
 
@@ -673,7 +674,7 @@ testcafe chrome my-tests/**/*.js --proxy username:password@proxy.mycorp.com
 
 ### --proxy-bypass \<rules\>
 
-Specifies the resources accessed bypassing the proxy server.
+Requires that TestCafe bypasses the proxy server to access the specified resources.
 
 When you access the Internet through a proxy server specified using the [--proxy](#--proxy-host) option, you may still need some local or external resources to be accessed directly. In this instance, provide their URLs to the `--proxy-bypass` option.
 
@@ -746,13 +747,25 @@ testcafe remote my-tests --qr-code
 
 ### --sf, --stop-on-first-fail
 
-Stops an entire test run if any test fails. This allows you not to wait for all the tests included in the test task to finish and allows focusing on the first error.
+Stops an entire test run if any test fails. Use this option when you want to fix failed tests individually and do not need a report on all the failures.
 
 ```sh
 testcafe chrome my-tests --sf
 ```
 
 *Related configuration file property*: [stopOnFirstFail](configuration-file.md#stoponfirstfail).
+
+### --ts-config-path \<path\>
+
+Enables TestCafe to use a custom [TypeScript configuration file](../test-api/typescript-support.md#customize-compiler-options) and specifies its location.
+
+```sh
+testcafe chrome my-tests --ts-config-path /Users/s.johnson/testcafe/tsconfig.json
+```
+
+You can specify an absolute or relative path. Relative paths resolve from the current directory (the directory from which you run TestCafe).
+
+*Related configuration file property*: [tsConfigPath](configuration-file.md#tsconfigpath).
 
 ### --color
 

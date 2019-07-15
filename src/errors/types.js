@@ -62,7 +62,9 @@ export const TEST_RUN_ERRORS = {
     roleSwitchInRoleInitializerError:                   'E58',
     assertionExecutableArgumentError:                   'E59',
     assertionWithoutMethodCallError:                    'E60',
-    assertionUnawaitedPromiseError:                     'E61'
+    assertionUnawaitedPromiseError:                     'E61',
+    requestHookNotImplementedError:                     'E62',
+    requestHookUnhandledError:                          'E63'
 };
 
 export const RUNTIME_ERRORS = {
@@ -108,5 +110,6 @@ export const RUNTIME_ERRORS = {
     requestHookConfigureAPIError:                                     'E1039',
     forbiddenCharatersInScreenshotPath:                               'E1040',
     cannotFindFFMPEG:                                                 'E1041',
-    compositeArgumentsError:                                          'E1042'
+    compositeArgumentsError:                                          'E1042',
+    cannotFindTypescriptConfigurationFile:                            'E1043'
 };

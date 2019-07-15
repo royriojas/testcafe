@@ -1,6 +1,7 @@
 import * as domUtils from './dom';
 import * as arrayUtils from './array';
 import * as styleUtils from './style';
+import { nativeMethods } from '../../driver/deps/hammerhead';
 
 //nodes utils
 function getOwnFirstVisibleTextNode (el) {
@@ -249,7 +250,7 @@ export function getNearestCommonAncestor (node1, node2) {
     if (domUtils.isTheSameNode(node1, node2)) {
         if (domUtils.isTheSameNode(node2, findContentEditableParent(node1)))
             return node1;
-        return node1.parentNode;
+        return nativeMethods.nodeParentNodeGetter.call(node1);
     }
 
     const ancestors             = [];
@@ -259,10 +260,10 @@ export function getNearestCommonAncestor (node1, node2) {
     if (!domUtils.isElementContainsNode(contentEditableParent, node2))
         return null;
 
-    for (curNode = node1; curNode !== contentEditableParent; curNode = curNode.parentNode)
+    for (curNode = node1; curNode !== contentEditableParent; curNode = nativeMethods.nodeParentNodeGetter.call(curNode))
         ancestors.push(curNode);
 
-    for (curNode = node2; curNode !== contentEditableParent; curNode = curNode.parentNode) {
+    for (curNode = node2; curNode !== contentEditableParent; curNode = nativeMethods.nodeParentNodeGetter.call(curNode)) {
         if (arrayUtils.indexOf(ancestors, curNode) !== -1)
             return curNode;
     }
@@ -407,7 +408,8 @@ function isNodeSelectable (node, includeDescendants) {
     if (hasSelectableChildren(node))
         return includeDescendants;
 
-    const isContentEditableRoot = !domUtils.isContentEditableElement(node.parentNode);
+    const parent                = nativeMethods.nodeParentNodeGetter.call(node);
+    const isContentEditableRoot = !domUtils.isContentEditableElement(parent);
     const visibleChildren       = getVisibleChildren(node);
     const hasBreakLineElements  = arrayUtils.some(visibleChildren, child => domUtils.getTagName(child) === 'br');
 
@@ -458,9 +460,8 @@ export function calculateNodeAndOffsetByPosition (el, offset) {
                 point.offset--;
         }
 
-        arrayUtils.forEach(childNodes, node => {
-            point = checkChildNodes(node);
-        });
+        for (let i = 0; i < childNodesLength; i++)
+            point = checkChildNodes(childNodes[i]);
 
         return point;
     }
@@ -503,9 +504,8 @@ export function calculatePositionByNodeAndOffset (el, { node, offset }) {
         else if (!find && (isNodeBlockWithBreakLine(el, target) || isNodeAfterNodeBlockWithBreakLine(el, target)))
             currentOffset++;
 
-        arrayUtils.forEach(childNodes, currentNode => {
-            currentOffset = checkChildNodes(currentNode);
-        });
+        for (let i = 0; i < childNodesLength; i++)
+            currentOffset = checkChildNodes(childNodes[i]);
 
         return currentOffset;
     }
@@ -562,7 +562,7 @@ function hasWhiteSpacePreStyle (el, container) {
     const whiteSpacePreStyles = ['pre', 'pre-wrap', 'pre-line'];
 
     while (el !== container) {
-        el = el.parentNode;
+        el = nativeMethods.nodeParentNodeGetter.call(el);
 
         if (arrayUtils.indexOf(whiteSpacePreStyles, styleUtils.get(el, 'white-space')) > -1)
             return true;
@@ -579,9 +579,8 @@ function getContentEditableNodes (target) {
     if (!isSkippableNode(target) && !childNodesLength && domUtils.isTextNode(target))
         result.push(target);
 
-    arrayUtils.forEach(childNodes, node => {
-        result = result.concat(getContentEditableNodes(node));
-    });
+    for (let i = 0; i < childNodesLength; i++)
+        result = result.concat(getContentEditableNodes(childNodes[i]));
 
     return result;
 }

@@ -10,6 +10,7 @@ import RawTestFileCompiler from './test-file/formats/raw';
 import { readFile } from '../utils/promisified-functions';
 import { GeneralError } from '../errors/runtime';
 import { RUNTIME_ERRORS } from '../errors/types';
+import { getTestFileCompilers, initTestFileCompilers } from './compilers';
 
 
 const SOURCE_CHUNK_LENGTH = 1000;
@@ -23,15 +24,14 @@ const testFileCompilers = [
 ];
 
 export default class Compiler {
-    constructor (sources) {
+    constructor (sources, options) {
         this.sources = sources;
+
+        initTestFileCompilers(options);
     }
 
     static getSupportedTestFileExtensions () {
-        return uniq(testFileCompilers.reduce((acc, c) => {
-            acc.push(c.getSupportedExtension());
-            return acc;
-        }, []));
+        return uniq(getTestFileCompilers().map(compiler => compiler.getSupportedExtension()));
     }
 
     async _createTestFileInfo (filename) {
@@ -46,7 +46,7 @@ export default class Compiler {
 
         code = stripBom(code).toString();
 
-        const compiler = find(testFileCompilers, someCompiler => someCompiler.canCompile(code, filename));
+        const compiler = find(getTestFileCompilers(), someCompiler => someCompiler.canCompile(code, filename));
 
         if (!compiler)
             return null;
@@ -131,6 +131,6 @@ export default class Compiler {
     }
 
     static cleanUp () {
-        testFileCompilers.forEach(compiler => compiler.cleanUp());
+        getTestFileCompilers().forEach(compiler => compiler.cleanUp());
     }
 }

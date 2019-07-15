@@ -318,7 +318,7 @@ $(document).ready(function () {
             backgroundColor: '#ff0000'
         });
 
-        window.scrollTo(0, 5050);
+        hammerhead.nativeMethods.scrollTo.call(window, 0, 5050);
 
         const click = new ClickAutomation(target[0], {
             offsetX: 10,
@@ -364,7 +364,7 @@ $(document).ready(function () {
             height:          100
         });
 
-        window.scrollTo(0, 5050);
+        hammerhead.nativeMethods.scrollTo.call(window, 0, 5050);
 
         const click = new ClickAutomation(target[0], {
             offsetX: 10,
@@ -714,6 +714,43 @@ $(document).ready(function () {
                     });
             });
     });
+
+    if (!browserUtils.isIE) {
+        asyncTest('click and mouseup events should have equal `timeStamp` properties', function () {
+            const target = document.createElement('div');
+
+            target.className    = TEST_ELEMENT_CLASS;
+            target.style.width  = '10px';
+            target.style.height = '10px';
+
+            document.body.appendChild(target);
+
+            let mouseUpTimeStamp = null;
+            let clickTimeStamp   = null;
+
+            target.addEventListener('mouseup', function (e) {
+                mouseUpTimeStamp = e.timeStamp;
+            });
+
+            target.addEventListener('click', function (e) {
+                clickTimeStamp = e.timeStamp;
+            });
+
+            const clickAutomation = new ClickAutomation(target, { });
+
+            return clickAutomation
+                .run()
+                .then(function () {
+                    ok(typeof mouseUpTimeStamp === 'number');
+                    ok(typeof clickTimeStamp === 'number');
+
+                    equal(mouseUpTimeStamp, clickTimeStamp);
+
+                    startNext();
+                });
+        });
+    }
+
 
     module('regression');
 

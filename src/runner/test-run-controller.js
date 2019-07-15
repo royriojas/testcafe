@@ -168,16 +168,16 @@ export default class TestRunController extends AsyncEventEmitter {
             await this.emit('test-run-before-done');
     }
 
-    async _testRunDisconnected (connection) {
+    _testRunDisconnected (connection) {
         this.disconnectionCount++;
 
-        if (this.disconnectionCount < DISCONNECT_THRESHOLD) {
-            connection.suppressError();
+        const disconnectionThresholdExceedeed = this.disconnectionCount >= DISCONNECT_THRESHOLD;
 
-            await connection.restartBrowser();
-
-            await this._restartTest();
-        }
+        return connection
+            .processDisconnection(disconnectionThresholdExceedeed)
+            .then(() => {
+                return this._restartTest();
+            });
     }
 
     get blocked () {
@@ -195,10 +195,12 @@ export default class TestRunController extends AsyncEventEmitter {
             return null;
         }
 
-        testRun.once('start', () => this.emit('test-run-start'));
-        testRun.once('ready', () => {
+        testRun.once('start', async () => {
+            await this.emit('test-run-start');
+        });
+        testRun.once('ready', async () => {
             if (!this.quarantine || this._isFirstQuarantineAttempt())
-                this.emit('test-run-ready');
+                await this.emit('test-run-ready');
         });
         testRun.once('before-done', () => this._testRunBeforeDone());
         testRun.once('done', () => this._testRunDone());

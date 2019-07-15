@@ -6,6 +6,7 @@ const getTestListModule              = lazyRequire('./compiler/test-file/formats
 const getTypeScriptTestListModule    = lazyRequire('./compiler/test-file/formats/typescript/get-test-list');
 const getCoffeeScriptTestListModule  = lazyRequire('./compiler/test-file/formats/coffeescript/get-test-list');
 const COMMAND_TYPE                   = lazyRequire('./test-run/commands/type');
+const ASSERTION_TYPE                 = lazyRequire('./assertions/type');
 const createCommandFromObject        = lazyRequire('./test-run/commands/from-object');
 const initializers                   = lazyRequire('./test-run/commands/validations/initializers');
 const errorTypes                     = lazyRequire('./errors/types');
@@ -13,6 +14,9 @@ const TestRunErrorFormattableAdapter = lazyRequire('./errors/test-run/formattabl
 const testRunErrors                  = lazyRequire('./errors/test-run');
 const processTestFnError             = lazyRequire('./errors/process-test-fn-error');
 const testRunErrorUtils              = lazyRequire('./errors/test-run/utils');
+const browserProviderPool            = lazyRequire('./browser/provider/pool');
+const BrowserConnection              = lazyRequire('./browser/connection');
+
 
 // NOTE: we can't use lazy require for TestRun and Assignable, because it breaks prototype chain for inherited classes
 let TestRun    = null;
@@ -22,8 +26,10 @@ export default {
     TestRunErrorFormattableAdapter,
     testRunErrors,
     COMMAND_TYPE,
+    ASSERTION_TYPE,
     errorTypes,
     testRunErrorUtils,
+    BrowserConnection,
 
     get Assignable () {
         if (!Assignable)
@@ -73,6 +79,10 @@ export default {
 
     get processTestFnError () {
         return processTestFnError;
+    },
+
+    get browserProviderPool () {
+        return browserProviderPool;
     },
 
     ensureUploadDirectory (...args) {

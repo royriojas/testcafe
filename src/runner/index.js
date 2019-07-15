@@ -112,7 +112,10 @@ export default class Runner extends EventEmitter {
         const browserSetErrorPromise = promisifyEvent(browserSet, 'error');
 
         const taskDonePromise = task.once('done')
-            .then(() => browserSetErrorPromise.cancel());
+            .then(() => browserSetErrorPromise.cancel())
+            .then(() => {
+                return Promise.all(reporters.map(reporter => reporter.pendingTaskDonePromise));
+            });
 
 
         const promises = [
@@ -150,8 +153,8 @@ export default class Runner extends EventEmitter {
         task.on('start', startHandlingTestErrors);
 
         if (!this.configuration.getOption(OPTION_NAMES.skipUncaughtErrors)) {
-            task.once('test-run-start', addRunningTest);
-            task.once('test-run-done', removeRunningTest);
+            task.on('test-run-start', addRunningTest);
+            task.on('test-run-done', removeRunningTest);
         }
 
         task.on('done', stopHandlingTestErrors);
@@ -299,6 +302,7 @@ export default class Runner extends EventEmitter {
         this.bootstrapper.appInitDelay = this.configuration.getOption(OPTION_NAMES.appInitDelay);
         this.bootstrapper.filter       = this.configuration.getOption(OPTION_NAMES.filter) || this.bootstrapper.filter;
         this.bootstrapper.reporters    = this.configuration.getOption(OPTION_NAMES.reporter) || this.bootstrapper.reporters;
+        this.bootstrapper.tsConfigPath = this.configuration.getOption(OPTION_NAMES.tsConfigPath);
     }
 
     // API
@@ -392,6 +396,14 @@ export default class Runner extends EventEmitter {
         this.configuration.mergeOptions({
             [OPTION_NAMES.appCommand]:   command,
             [OPTION_NAMES.appInitDelay]: initDelay
+        });
+
+        return this;
+    }
+
+    tsConfigPath (path) {
+        this.configuration.mergeOptions({
+            [OPTION_NAMES.tsConfigPath]: path
         });
 
         return this;

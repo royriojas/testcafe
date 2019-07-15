@@ -49,6 +49,7 @@ A configuration file can include the following settings:
 * [developmentMode](#developmentmode)
 * [qrCode](#qrcode)
 * [stopOnFirstFail](#stoponfirstfail)
+* [tsConfigPath](#tsconfigpath)
 * [color](#color)
 * [noColor](#nocolor)
 
@@ -670,7 +671,7 @@ You can also specify authentication credentials with the proxy host.
 
 ## proxyBypass
 
-Specifies the resources accessed bypassing the proxy server.
+Requires that TestCafe bypasses the proxy server to access the specified resources.
 
 ```json
 {
@@ -722,7 +723,7 @@ Enables mechanisms to log and diagnose errors. You should enable this option if 
 
 ## qrCode
 
-If you launch TestCafe from the console, outputs a QR-code that represents URLs used to connect the remote browsers.
+If you launch TestCafe from the console, this option outputs a QR-code that represents URLs used to connect the remote browsers.
 
 ```json
 {
@@ -744,6 +745,21 @@ Stops a test run if any test fails.
 
 *CLI*: [--sf, --stop-on-first-fail](command-line-interface.md#--sf---stop-on-first-fail)  
 *API*: [runner.run({ stopOnFirstFail })](programming-interface/runner.md#run)
+
+## tsConfigPath
+
+Enables TestCafe to use a custom [TypeScript configuration file](../test-api/typescript-support.md#customize-compiler-options) and specifies its location.
+
+```json
+{
+    "tsConfigPath": "/Users/s.johnson/testcafe/tsconfig.json"
+}
+```
+
+You can specify an absolute or relative path. Relative paths resolve from the current directory (the directory from which you run TestCafe).
+
+*CLI*: [--ts-config-path](command-line-interface.md#--ts-config-path-path)  
+*API*: [runner.tsConfigPath](programming-interface/runner.md#tsconfigpath)
 
 ## color
 
